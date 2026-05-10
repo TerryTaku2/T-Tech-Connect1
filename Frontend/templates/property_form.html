@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | {{ 'Edit Property' if prop and prop.id else 'List New Property' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/property_form.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+{% include '_topbar.html' %}
+
+<div class="layout">
+  {% include '_sidebar.html' %}
+
+  <main class="page-main">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <a href="/landlord" class="back-crumb">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          My Properties
+        </a>
+        <h1 class="page-title">{{ 'Edit Property' if prop and prop.id else 'List a New Property' }}</h1>
+        <p class="page-sub">Fill in the details below. Fields marked <span class="req-star">*</span> are required.</p>
+      </div>
+    </div>
+
+    <!-- Step indicator -->
+    <div class="step-track">
+      <div class="step active" data-section="basic">
+        <div class="step-num">1</div><span>Basic Info</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-section="rooms">
+        <div class="step-num">2</div><span>Rooms</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-section="services">
+        <div class="step-num">3</div><span>Services</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-section="location">
+        <div class="step-num">4</div><span>Location</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-section="contact">
+        <div class="step-num">5</div><span>Contact</span>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" data-section="photos">
+        <div class="step-num">6</div><span>Photos</span>
+      </div>
+    </div>
+
+    <form id="property-form" method="POST" action="" enctype="multipart/form-data" novalidate>
+
+      <!-- ── SECTION 1: Basic Info ────────────────────────────────── -->
+      <div class="form-section" id="section-basic">
+        <div class="section-header">
+          <div class="section-num">1</div>
+          <div>
+            <h2 class="section-title">Basic Information</h2>
+            <p class="section-sub">Tell students what your property is about.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Title -->
+          <div class="field-group field-full {% if errors and errors.title %}has-error{% endif %}">
+            <label class="field-label" for="title">Property Title <span class="req-star">*</span></label>
+            <input type="text" id="title" name="title" class="field-input"
+                   placeholder="e.g. Sunshine Student Lodge, Room 12B"
+                   value="{{ prop.title if prop else '' }}" maxlength="120" required />
+            {% if errors and errors.title %}<span class="field-error">{{ errors.title }}</span>{% endif %}
+          </div>
+
+          <!-- Property type -->
+          <div class="field-group">
+            <label class="field-label" for="property_type">Property Type <span class="req-star">*</span></label>
+            <div class="select-wrap">
+              <select id="property_type" name="property_type" class="field-input">
+                {% set types = [('apartment','Apartment'),('house','House'),('room','Single Room'),
+                                ('cottage','Cottage'),('flat','Flat'),('studio','Studio'),('hostel','Hostel')] %}
+                {% for val, label in types %}
+                  <option value="{{ val }}" {{ 'selected' if prop and prop.property_type == val }}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="field-group">
+            <label class="field-label" for="status">Occupancy Status <span class="req-star">*</span></label>
+            <div class="select-wrap">
+              <select id="status" name="status" class="field-input">
+                <option value="available" {{ 'selected' if not prop or prop.status == 'available' }}>Available — Needs Tenants</option>
+                <option value="partial"   {{ 'selected' if prop and prop.status == 'partial' }}>Partially Occupied</option>
+                <option value="occupied"  {{ 'selected' if prop and prop.status == 'occupied' }}>Fully Occupied</option>
+                <option value="maintenance" {{ 'selected' if prop and prop.status == 'maintenance' }}>Under Maintenance</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="field-group field-full">
+            <label class="field-label" for="description">Description</label>
+            <textarea id="description" name="description" class="field-input field-textarea"
+                      placeholder="Describe the property — furnishings, nearby facilities, rules, etc."
+                      rows="4" maxlength="1000">{{ prop.description if prop else '' }}</textarea>
+            <span class="char-count"><span id="desc-count">{{ (prop.description|length) if prop and prop.description else 0 }}</span>/1000</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION 2: Rooms ────────────────────────────────────── -->
+      <div class="form-section" id="section-rooms">
+        <div class="section-header">
+          <div class="section-num">2</div>
+          <div>
+            <h2 class="section-title">Room Configuration</h2>
+            <p class="section-sub">Specify the room layout and availability.</p>
+          </div>
+        </div>
+
+        <!-- Shared toggle -->
+        <div class="toggle-card" id="shared-toggle">
+          <div class="toggle-info">
+            <h4 class="toggle-title">Shared Accommodation</h4>
+            <p class="toggle-sub">Multiple tenants share common areas (lounge, kitchen, bathroom).</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="is_shared" name="is_shared" value="1"
+                   {{ 'checked' if prop and prop.is_shared }} />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+
+        <div class="form-grid">
+          <!-- Total rooms -->
+          <div class="field-group">
+            <label class="field-label" for="total_rooms">Total Rooms <span class="req-star">*</span></label>
+            <div class="number-input-wrap">
+              <button type="button" class="num-btn num-minus" data-target="total_rooms">−</button>
+              <input type="number" id="total_rooms" name="total_rooms" class="field-input num-field"
+                     value="{{ prop.total_rooms if prop else 1 }}" min="1" max="200" />
+              <button type="button" class="num-btn num-plus" data-target="total_rooms">+</button>
+            </div>
+          </div>
+
+          <!-- Available rooms -->
+          <div class="field-group">
+            <label class="field-label" for="available_rooms">Available Rooms</label>
+            <div class="number-input-wrap">
+              <button type="button" class="num-btn num-minus" data-target="available_rooms">−</button>
+              <input type="number" id="available_rooms" name="available_rooms" class="field-input num-field"
+                     value="{{ prop.available_rooms if prop else 1 }}" min="0" max="200" />
+              <button type="button" class="num-btn num-plus" data-target="available_rooms">+</button>
+            </div>
+          </div>
+
+          <!-- Bathrooms -->
+          <div class="field-group">
+            <label class="field-label" for="bathrooms">Bathrooms</label>
+            <div class="number-input-wrap">
+              <button type="button" class="num-btn num-minus" data-target="bathrooms">−</button>
+              <input type="number" id="bathrooms" name="bathrooms" class="field-input num-field"
+                     value="{{ prop.bathrooms if prop else 1 }}" min="1" max="50" />
+              <button type="button" class="num-btn num-plus" data-target="bathrooms">+</button>
+            </div>
+          </div>
+
+          <!-- Price -->
+          <div class="field-group {% if errors and errors.price %}has-error{% endif %}">
+            <label class="field-label" for="price_per_month">Monthly Rent <span class="req-star">*</span></label>
+            <div class="price-input-wrap">
+              <div class="select-wrap currency-select">
+                <select name="currency" id="currency" class="field-input">
+                  <option value="USD" {{ 'selected' if not prop or prop.currency == 'USD' }}>USD $</option>
+                  <option value="ZWL" {{ 'selected' if prop and prop.currency == 'ZWL' }}>ZWL Z$</option>
+                  <option value="ZAR" {{ 'selected' if prop and prop.currency == 'ZAR' }}>ZAR R</option>
+                </select>
+                <span class="select-arrow">▾</span>
+              </div>
+              <input type="number" id="price_per_month" name="price_per_month" class="field-input price-field"
+                     placeholder="0.00" step="0.01" min="0"
+                     value="{{ prop.price_per_month if prop else '' }}" required />
+            </div>
+            {% if errors and errors.price %}<span class="field-error">{{ errors.price }}</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION 3: Services ─────────────────────────────────── -->
+      <div class="form-section" id="section-services">
+        <div class="section-header">
+          <div class="section-num">3</div>
+          <div>
+            <h2 class="section-title">Services & Amenities</h2>
+            <p class="section-sub">Select all services included in the rent.</p>
+          </div>
+        </div>
+
+        {% set all_services = [
+          ('wifi',        '📶', 'Wi-Fi Internet'),
+          ('water',       '💧', 'Running Water'),
+          ('electricity', '⚡', 'Electricity'),
+          ('parking',     '🅿️', 'Parking Space'),
+          ('security',    '🔒', 'Security / Guard'),
+          ('laundry',     '🫧', 'Laundry / Washing'),
+          ('kitchen',     '🍳', 'Kitchen Access'),
+          ('dstv',        '📺', 'DSTV / Cable TV'),
+          ('garden',      '🌿', 'Garden / Yard'),
+          ('gym',         '🏋️', 'Gym / Fitness'),
+          ('cctv',        '📷', 'CCTV Cameras'),
+          ('borehole',    '🪣', 'Borehole Water'),
+        ] %}
+
+        <div class="services-grid">
+          {% for val, icon, label in all_services %}
+          <label class="service-card {% if prop and val in prop.services %}selected{% endif %}" id="svc-card-{{ val }}">
+            <input type="checkbox" name="services" value="{{ val }}"
+                   {{ 'checked' if prop and val in prop.services }}
+                   onchange="toggleServiceCard(this)" />
+            <span class="svc-icon">{{ icon }}</span>
+            <span class="svc-label">{{ label }}</span>
+            <span class="svc-check">✓</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ── SECTION 4: Location ─────────────────────────────────── -->
+      <div class="form-section" id="section-location">
+        <div class="section-header">
+          <div class="section-num">4</div>
+          <div>
+            <h2 class="section-title">Location</h2>
+            <p class="section-sub">Search for your address or click the map to drop a pin.</p>
+          </div>
+        </div>
+
+        {% if not maps_key %}
+        <div class="maps-notice">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <strong>Google Maps API key not set.</strong>
+          Set <code>GOOGLE_MAPS_API_KEY</code> in your environment or in <code>app.py</code> to enable map picking.
+          You can still enter the address manually below.
+        </div>
+        {% endif %}
+
+        <div class="form-grid">
+          <!-- Address search -->
+          <div class="field-group field-full {% if errors and errors.address %}has-error{% endif %}">
+            <label class="field-label" for="address">Full Address <span class="req-star">*</span></label>
+            <div class="input-with-icon">
+              <svg class="input-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <input type="text" id="address" name="address" class="field-input has-left-icon"
+                     placeholder="Start typing your address…"
+                     value="{{ prop.address if prop else '' }}" required
+                     autocomplete="off" />
+            </div>
+            {% if errors and errors.address %}<span class="field-error">{{ errors.address }}</span>{% endif %}
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="city">City / Town</label>
+            <input type="text" id="city" name="city" class="field-input"
+                   placeholder="e.g. Harare"
+                   value="{{ prop.city if prop else '' }}" />
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="country">Country</label>
+            <input type="text" id="country" name="country" class="field-input"
+                   value="{{ prop.country if prop else 'Zimbabwe' }}" />
+          </div>
+
+          <!-- Hidden lat/lng -->
+          <input type="hidden" id="latitude"  name="latitude"  value="{{ prop.latitude  if prop and prop.latitude  else '' }}" />
+          <input type="hidden" id="longitude" name="longitude" value="{{ prop.longitude if prop and prop.longitude else '' }}" />
+        </div>
+
+        <!-- Google Map -->
+        <div class="map-wrap">
+          <div id="map-container">
+            <div id="google-map"></div>
+            <div class="map-placeholder" id="map-placeholder">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <p>{% if maps_key %}Map loading…{% else %}Enter address manually above{% endif %}</p>
+            </div>
+          </div>
+          <div class="map-coords" id="map-coords" style="display:none">
+            📍 <span id="coords-display"></span>
+            <button type="button" class="clear-pin" id="clear-pin">Clear pin</button>
+          </div>
+          {% if maps_key %}
+          <p class="map-hint">Click anywhere on the map to drop a pin, or use the search box above.</p>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- ── SECTION 5: Contact ──────────────────────────────────── -->
+      <div class="form-section" id="section-contact">
+        <div class="section-header">
+          <div class="section-num">5</div>
+          <div>
+            <h2 class="section-title">Contact Information</h2>
+            <p class="section-sub">How should prospective tenants reach you?</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label" for="contact_phone">Phone Number</label>
+            <div class="input-with-icon">
+              <svg class="input-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.59 12 19.79 19.79 0 0 1 1.5 3.4 2 2 0 0 1 3.48 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <input type="tel" id="contact_phone" name="contact_phone" class="field-input has-left-icon"
+                     placeholder="+263 77 000 0000"
+                     value="{{ prop.contact_phone if prop else '' }}" />
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="contact_email">Contact Email</label>
+            <div class="input-with-icon">
+              <svg class="input-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <input type="email" id="contact_email" name="contact_email" class="field-input has-left-icon"
+                     placeholder="you@example.com"
+                     value="{{ prop.contact_email if prop else user_email if user_email else '' }}" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTION 6: Photos ─────────────────────────────────── -->
+      <div class="form-section" id="section-photos">
+        <div class="section-header">
+          <div class="section-num">6</div>
+          <div>
+            <h2 class="section-title">Photos</h2>
+            <p class="section-sub">Upload up to 10 photos. The first one becomes the cover.</p>
+          </div>
+        </div>
+
+        {% if prop and prop.images %}
+        <div class="existing-images" id="existing-images">
+          <p class="img-section-label">Current Photos <span class="img-count">({{ prop.images|length }})</span></p>
+          <div class="img-thumb-grid" id="existing-thumb-grid">
+            {% for img in prop.images %}
+            <div class="img-thumb-item" id="img-{{ img.id }}" data-id="{{ img.id }}">
+              <img src="{{ url_for('static', filename='uploads/properties/' + img.filename) }}"
+                   alt="Property photo" class="img-thumb" />
+              {% if img.is_primary %}<span class="img-cover-badge">Cover</span>{% endif %}
+              <div class="img-thumb-actions">
+                {% if not img.is_primary %}
+                <button type="button" class="img-action-btn img-set-cover-btn"
+                        title="Set as cover"
+                        onclick="setCover({{ img.id }}, {{ prop.id }})">★</button>
+                {% endif %}
+                <button type="button" class="img-action-btn img-del-btn"
+                        title="Delete photo"
+                        onclick="deleteExistingImage({{ img.id }}, {{ prop.id }})">×</button>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="images-input" name="images" multiple
+                 accept=".jpg,.jpeg,.png,.webp" style="display:none" />
+          <div class="upload-zone-inner" id="upload-zone-inner">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p class="upload-hint-main">Drag photos here or
+              <button type="button" class="upload-browse-btn"
+                      onclick="document.getElementById('images-input').click()">browse files</button>
+            </p>
+            <p class="upload-hint-sub">JPG, PNG or WebP &mdash; max 5 MB each, up to 10 photos total</p>
+          </div>
+        </div>
+
+        <div class="img-preview-grid" id="img-preview-grid"></div>
+      </div>
+
+      <!-- ── Submit bar ──────────────────────────────────────────── -->
+      <div class="submit-bar">
+        <a href="/landlord" class="btn-outline">Cancel</a>
+        <button type="submit" class="btn-primary btn-submit" id="submit-btn">
+          <span class="btn-text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            {{ 'Save Changes' if prop and prop.id else 'Publish Property' }}
+          </span>
+          <span class="btn-spinner" style="display:none">
+            <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            Saving…
+          </span>
+        </button>
+      </div>
+
+    </form>
+  </main>
+</div>
+
+<!-- Google Maps API -->
+{% if maps_key %}
+<script>
+  window.GMAPS_KEY = "{{ maps_key }}";
+  window.INITIAL_LAT = {{ prop.latitude  if prop and prop.latitude  else -17.8292 }};
+  window.INITIAL_LNG = {{ prop.longitude if prop and prop.longitude else  31.0522 }};
+  window.HAS_PIN     = {{ 'true' if prop and prop.latitude else 'false' }};
+</script>
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key={{ maps_key }}&libraries=places&callback=initMap">
+</script>
+{% else %}
+<script>window.GMAPS_KEY = null;</script>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/property_form.js') }}"></script>
+</body>
+</html>

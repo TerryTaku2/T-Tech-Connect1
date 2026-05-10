@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- Background decorations -->
+  <div class="bg-decoration">
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+  </div>
+
+  <div class="login-container">
+
+    <!-- Left panel — branding -->
+    <div class="brand-panel">
+      <div class="brand-content">
+        <div class="logo-wrap">
+          <div class="logo-icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="40" height="40" rx="12" fill="white" fill-opacity="0.2"/>
+              <path d="M8 14h24M8 20h16M8 26h20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="30" cy="26" r="5" fill="white" fill-opacity="0.9"/>
+              <path d="M28 26l1.5 1.5L32 24" stroke="#1e40af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="logo-text">T-Tech Connect</span>
+        </div>
+
+        <h1 class="brand-headline">Your Accommodation,<br />Simplified.</h1>
+        <p class="brand-sub">Manage rooms, bookings, and services — all in one place, built for the T-Tech community.</p>
+
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </div>
+            <span>Real-time room availability</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <span>Easy booking & scheduling</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.59 12 19.79 19.79 0 0 1 1.5 3.4 2 2 0 0 1 3.48 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            <span>Instant maintenance requests</span>
+          </div>
+        </div>
+      </div>
+      <div class="brand-footer">© 2026 T-Tech Connect · All rights reserved</div>
+    </div>
+
+    <!-- Right panel — login form -->
+    <div class="form-panel">
+      <div class="form-container">
+
+        <div class="form-header">
+          <h2 class="form-title">Welcome back</h2>
+          <p class="form-sub">Sign in to your T-Tech Connect account</p>
+        </div>
+
+        <!-- Flash messages (server-rendered) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Server-side error -->
+        {% if error %}
+          <div class="alert alert-error" id="server-error">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            {{ error }}
+          </div>
+        {% endif %}
+
+        <!-- JS-rendered alert -->
+        <div class="alert" id="js-alert" style="display:none;"></div>
+
+        <form id="login-form" method="post" action="/login" novalidate>
+
+          <!-- Email -->
+          <div class="field-group" id="email-group">
+            <label class="field-label" for="email">Email address</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </span>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                class="field-input"
+                placeholder="you@ttech.ac.zw"
+                autocomplete="email"
+                spellcheck="false"
+                required
+              />
+            </div>
+            <span class="field-error" id="email-error"></span>
+          </div>
+
+          <!-- Password -->
+          <div class="field-group" id="password-group">
+            <label class="field-label" for="password">
+              Password
+              <a href="/forgot-password" class="forgot-link">Forgot password?</a>
+            </label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </span>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="field-input"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required
+              />
+              <button type="button" class="toggle-pwd" id="toggle-pwd" aria-label="Show password">
+                <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <svg id="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+            <span class="field-error" id="password-error"></span>
+          </div>
+
+          <!-- Password strength bar (visible while typing) -->
+          <div class="strength-wrap" id="strength-wrap" style="display:none">
+            <div class="strength-bar">
+              <div class="strength-fill" id="strength-fill"></div>
+            </div>
+            <span class="strength-label" id="strength-label"></span>
+          </div>
+
+          <!-- Remember me -->
+          <div class="remember-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="remember" name="remember" class="checkbox-input" />
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Remember me for 7 days</span>
+            </label>
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="btn-submit" id="btn-submit">
+            <span class="btn-text">Sign in</span>
+            <span class="btn-spinner" style="display:none">
+              <svg class="spinner-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              Signing in…
+            </span>
+          </button>
+        </form>
+
+        <!-- Demo credentials hint -->
+        <div class="demo-hint">
+          <details>
+            <summary>Demo credentials</summary>
+            <div class="demo-creds">
+              <div><strong>Admin:</strong> admin@ttech.ac.zw / Admin@1234</div>
+              <div><strong>Student:</strong> student@ttech.ac.zw / Student@1234</div>
+              <div><strong>Landlord:</strong> landlord@ttech.ac.zw / Landlord@1234</div>
+            </div>
+          </details>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | {{ prop.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/property_form.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+{% include '_topbar.html' %}
+
+<div class="layout">
+  {% include '_sidebar.html' %}
+
+  <main class="page-main">
+
+    <div class="page-header">
+      <div>
+        <a href="/landlord" class="back-crumb">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          My Properties
+        </a>
+        <h1 class="page-title">{{ prop.title }}</h1>
+        <p class="page-sub">
+          <span class="status-badge status-{{ prop.status }}">
+            {% if prop.status == 'available' %}Needs Tenants
+            {% elif prop.status == 'occupied' %}Occupied
+            {% elif prop.status == 'partial' %}Partially Occupied
+            {% else %}Maintenance{% endif %}
+          </span>
+          &nbsp;·&nbsp; {{ prop.property_type|title }}
+        </p>
+      </div>
+      {% if user_role in ('landlord','admin') %}
+      <div class="header-actions">
+        <a href="/landlord/property/{{ prop.id }}/edit" class="btn-outline">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit Property
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if prop.images %}
+    <!-- Photo gallery -->
+    <div class="gallery-wrap">
+      <div class="gallery-main">
+        <img id="gallery-hero"
+             src="{{ url_for('static', filename='uploads/properties/' + prop.images[0].filename) }}"
+             alt="{{ prop.title }}" class="gallery-hero-img" />
+      </div>
+      {% if prop.images|length > 1 %}
+      <div class="gallery-thumbs">
+        {% for img in prop.images %}
+        <div class="gallery-thumb {% if loop.first %}gallery-thumb--active{% endif %}"
+             data-src="{{ url_for('static', filename='uploads/properties/' + img.filename) }}"
+             onclick="gallerySelect(this)">
+          <img src="{{ url_for('static', filename='uploads/properties/' + img.filename) }}"
+               alt="Photo {{ loop.index }}" />
+          {% if img.is_primary %}<span class="gallery-cover-badge">Cover</span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="view-layout">
+
+      <!-- Left column: details -->
+      <div class="view-main">
+
+        {% if prop.description %}
+        <div class="detail-card">
+          <h3 class="detail-card-title">About this Property</h3>
+          <p class="detail-desc">{{ prop.description }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Specs grid -->
+        <div class="detail-card">
+          <h3 class="detail-card-title">Property Details</h3>
+          <div class="spec-grid">
+            <div class="spec-item">
+              <span class="spec-icon">🏠</span>
+              <div><span class="spec-label">Type</span><span class="spec-val">{{ prop.property_type|title }}</span></div>
+            </div>
+            <div class="spec-item">
+              <span class="spec-icon">🚪</span>
+              <div><span class="spec-label">Total Rooms</span><span class="spec-val">{{ prop.total_rooms }}</span></div>
+            </div>
+            <div class="spec-item">
+              <span class="spec-icon">✅</span>
+              <div><span class="spec-label">Available Rooms</span><span class="spec-val">{{ prop.available_rooms }}</span></div>
+            </div>
+            <div class="spec-item">
+              <span class="spec-icon">🛁</span>
+              <div><span class="spec-label">Bathrooms</span><span class="spec-val">{{ prop.bathrooms }}</span></div>
+            </div>
+            <div class="spec-item">
+              <span class="spec-icon">{{ '👥' if prop.is_shared else '👤' }}</span>
+              <div><span class="spec-label">Accommodation</span><span class="spec-val">{{ 'Shared' if prop.is_shared else 'Private' }}</span></div>
+            </div>
+            <div class="spec-item">
+              <span class="spec-icon">💰</span>
+              <div><span class="spec-label">Monthly Rent</span><span class="spec-val spec-price">{{ prop.currency }} {{ "%.2f"|format(prop.price_per_month) }}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Services -->
+        {% if prop.services %}
+        <div class="detail-card">
+          <h3 class="detail-card-title">Services & Amenities</h3>
+          {% set service_map = {
+            'wifi':'📶 Wi-Fi Internet','water':'💧 Running Water','electricity':'⚡ Electricity',
+            'parking':'🅿️ Parking','security':'🔒 Security','laundry':'🫧 Laundry',
+            'kitchen':'🍳 Kitchen','dstv':'📺 DSTV','garden':'🌿 Garden',
+            'gym':'🏋️ Gym','cctv':'📷 CCTV','borehole':'🪣 Borehole'
+          } %}
+          <div class="services-view-grid">
+            {% for svc in prop.services %}
+            <div class="svc-view-item">{{ service_map.get(svc, svc|title) }}</div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Location -->
+        <div class="detail-card">
+          <h3 class="detail-card-title">Location</h3>
+          <p class="detail-address">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {{ prop.address }}{% if prop.city %}, {{ prop.city }}{% endif %}{% if prop.country %}, {{ prop.country }}{% endif %}
+          </p>
+
+          {% if prop.latitude and prop.longitude %}
+          <div class="map-wrap map-wrap-sm">
+            <div id="google-map"></div>
+          </div>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <!-- Right column: contact + quick facts -->
+      <div class="view-sidebar">
+        <div class="contact-card">
+          <h3 class="contact-title">Contact Landlord</h3>
+          <div class="landlord-row">
+            <div class="landlord-avatar">{{ prop.landlord_name[0].upper() if prop.landlord_name else 'L' }}</div>
+            <div>
+              <div class="landlord-name">{{ prop.landlord_name }}</div>
+              <div class="landlord-sub">Property Owner</div>
+            </div>
+          </div>
+          {% if prop.contact_phone %}
+          <a href="tel:{{ prop.contact_phone }}" class="contact-btn contact-phone">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.59 12 19.79 19.79 0 0 1 1.5 3.4 2 2 0 0 1 3.48 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            {{ prop.contact_phone }}
+          </a>
+          {% endif %}
+          {% if prop.contact_email %}
+          <a href="mailto:{{ prop.contact_email }}" class="contact-btn contact-email">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            {{ prop.contact_email }}
+          </a>
+          {% endif %}
+
+          {% if current_user_id and current_user_id != prop.landlord_user_id %}
+          <button class="contact-btn contact-chat" id="msg-landlord-btn"
+                  onclick="startChat({{ prop.landlord_user_id }}, {{ prop.id }}, {{ prop.title | tojson }})">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Message Landlord
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="price-card">
+          <span class="big-price">{{ prop.currency }} {{ "%.0f"|format(prop.price_per_month) }}</span>
+          <span class="per-month">per month</span>
+          {% if prop.available_rooms > 0 %}
+          <div class="avail-tag">{{ prop.available_rooms }} room{{ 's' if prop.available_rooms != 1 }} available</div>
+          {% else %}
+          <div class="avail-tag avail-full">Fully occupied</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+{% if maps_key and prop.latitude and prop.longitude %}
+<script>
+  window.GMAPS_KEY    = "{{ maps_key }}";
+  window.INITIAL_LAT  = {{ prop.latitude }};
+  window.INITIAL_LNG  = {{ prop.longitude }};
+  window.VIEW_ONLY    = true;
+</script>
+<script async defer
+  src="https://maps.googleapis.com/maps/api/js?key={{ maps_key }}&callback=initViewMap">
+</script>
+<script>
+  function initViewMap() {
+    const pos = { lat: window.INITIAL_LAT, lng: window.INITIAL_LNG };
+    const map = new google.maps.Map(document.getElementById('google-map'), {
+      center: pos, zoom: 15,
+      mapTypeControl: false, streetViewControl: false
+    });
+    new google.maps.Marker({ position: pos, map, title: '{{ prop.title|e }}' });
+  }
+</script>
+{% endif %}
+
+<style>
+.gallery-wrap {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.gallery-hero-img {
+  width: 100%; max-height: 420px;
+  object-fit: cover; display: block;
+  cursor: zoom-in;
+}
+.gallery-thumbs {
+  display: flex; gap: .5rem;
+  padding: .75rem;
+  overflow-x: auto;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+}
+.gallery-thumb {
+  width: 80px; height: 60px; flex-shrink: 0;
+  border-radius: 7px; overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer; position: relative;
+  transition: border-color .15s;
+}
+.gallery-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery-thumb--active { border-color: var(--primary); }
+.gallery-cover-badge {
+  position: absolute; bottom: 2px; left: 2px;
+  background: var(--primary); color: #fff;
+  font-size: .55rem; font-weight: 700;
+  padding: 1px 4px; border-radius: 3px;
+}
+/* Lightbox */
+.lightbox-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.88);
+  align-items: center; justify-content: center;
+}
+.lightbox-overlay.open { display: flex; }
+.lightbox-img { max-width: 92vw; max-height: 88vh; border-radius: 8px; object-fit: contain; }
+.lightbox-close {
+  position: absolute; top: 1.2rem; right: 1.4rem;
+  background: rgba(255,255,255,.15); border: none;
+  color: #fff; font-size: 1.8rem; line-height: 1;
+  width: 42px; height: 42px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+</style>
+
+<!-- Lightbox overlay -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">×</button>
+  <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+</div>
+
+<script>
+  function gallerySelect(thumb) {
+    document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('gallery-thumb--active'));
+    thumb.classList.add('gallery-thumb--active');
+    const hero = document.getElementById('gallery-hero');
+    if (hero) hero.src = thumb.dataset.src;
+  }
+  document.getElementById('gallery-hero') && document.getElementById('gallery-hero').addEventListener('click', () => {
+    const src = document.getElementById('gallery-hero').src;
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  });
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+
+<script>
+  async function startChat(recipientId, propertyId, propertyTitle) {
+    const btn = document.getElementById('msg-landlord-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Opening chat…'; }
+    try {
+      const res = await fetch('/api/conversations/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient_id: recipientId, property_id: propertyId, subject: 'Inquiry: ' + propertyTitle }),
+      });
+      const data = await res.json();
+      if (data.conv_id) window.location.href = '/messages?c=' + data.conv_id;
+      else { if (btn) { btn.disabled = false; btn.innerHTML = '💬 Message Landlord'; } }
+    } catch {
+      if (btn) { btn.disabled = false; btn.innerHTML = '💬 Message Landlord'; }
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | Landlord Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+{% include '_topbar.html' %}
+
+<div class="layout">
+  {% include '_sidebar.html' %}
+
+  <main class="page-main">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ msg }}
+          <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+        </div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Header row -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">My Properties</h1>
+        <p class="page-sub">Manage all your listed accommodations from here.</p>
+      </div>
+      <a href="/landlord/property/new" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        List New Property
+      </a>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid">
+      <div class="stat-card stat-blue">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">{{ stats.total or 0 }}</span>
+          <span class="stat-label">Total Properties</span>
+        </div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">{{ stats.available or 0 }}</span>
+          <span class="stat-label">Available</span>
+        </div>
+      </div>
+      <div class="stat-card stat-red">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">{{ stats.occupied or 0 }}</span>
+          <span class="stat-label">Occupied</span>
+        </div>
+      </div>
+      <div class="stat-card stat-amber">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-value">
+            {% if stats.total_monthly %}${{ "%.0f"|format(stats.total_monthly) }}{% else %}$0{% endif %}
+          </span>
+          <span class="stat-label">Est. Monthly Income</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Property cards -->
+    {% if properties %}
+      <div class="prop-grid">
+        {% for p in properties %}
+        <div class="prop-card" id="prop-{{ p.id }}">
+
+          <!-- Cover photo -->
+          {% if p.cover_image %}
+          <div class="prop-cover">
+            <img src="{{ url_for('static', filename='uploads/properties/' + p.cover_image) }}"
+                 alt="{{ p.title }}" class="prop-cover-img" />
+          </div>
+          {% else %}
+          <div class="prop-cover prop-cover--empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          {% endif %}
+
+          <!-- Status badge -->
+          <div class="prop-status-bar">
+            <span class="status-badge status-{{ p.status }}">
+              {% if p.status == 'available' %}Needs Tenants
+              {% elif p.status == 'occupied' %}Occupied
+              {% elif p.status == 'partial' %}Partially Occupied
+              {% else %}Maintenance{% endif %}
+            </span>
+            <span class="prop-type-chip">{{ p.property_type|title }}</span>
+          </div>
+
+          <div class="prop-body">
+            <h3 class="prop-title">{{ p.title }}</h3>
+
+            <div class="prop-location">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {{ p.address or p.city or 'Location not set' }}
+            </div>
+
+            {% if p.description %}
+            <p class="prop-desc">{{ p.description[:120] }}{% if p.description|length > 120 %}…{% endif %}</p>
+            {% endif %}
+
+            <!-- Room info -->
+            <div class="prop-meta-row">
+              <div class="meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+                {{ p.total_rooms }} room{{ 's' if p.total_rooms != 1 }}
+              </div>
+              <div class="meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M13 6h7a2 2 0 0 1 2 2v3"/><path d="M8 16s1.5-2 4-2 4 2 4 2"/></svg>
+                {{ p.bathrooms }} bath{{ 's' if p.bathrooms != 1 }}
+              </div>
+              <div class="meta-item">
+                {% if p.is_shared %}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Shared
+                {% else %}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Private
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Services chips -->
+            {% if p.services %}
+            <div class="services-row">
+              {% set service_icons = {
+                'wifi': '📶', 'water': '💧', 'electricity': '⚡',
+                'parking': '🅿️', 'security': '🔒', 'laundry': '🫧',
+                'kitchen': '🍳', 'dstv': '📺', 'garden': '🌿', 'gym': '🏋️'
+              } %}
+              {% for svc in p.services[:5] %}
+                <span class="svc-chip">{{ service_icons.get(svc, '✓') }} {{ svc|title }}</span>
+              {% endfor %}
+              {% if p.services|length > 5 %}
+                <span class="svc-chip svc-more">+{{ p.services|length - 5 }} more</span>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Footer -->
+          <div class="prop-footer">
+            <div class="prop-price">
+              <span class="price-value">{{ p.currency }} {{ "%.0f"|format(p.price_per_month) }}</span>
+              <span class="price-label">/ month</span>
+            </div>
+            <div class="prop-actions">
+              <a href="/landlord/property/{{ p.id }}" class="btn-action btn-view" title="View">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </a>
+              <a href="/landlord/property/{{ p.id }}/edit" class="btn-action btn-edit" title="Edit">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </a>
+              <button class="btn-action btn-delete" onclick="confirmDelete({{ p.id }}, '{{ p.title|e }}')" title="Delete">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                Delete
+              </button>
+            </div>
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <!-- Empty state -->
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h3>No properties listed yet</h3>
+        <p>Start by listing your first accommodation for students to discover.</p>
+        <a href="/landlord/property/new" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          List Your First Property
+        </a>
+      </div>
+    {% endif %}
+
+  </main>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <h3 class="modal-title">Delete Property?</h3>
+    <p class="modal-body">Are you sure you want to delete <strong id="modal-prop-name"></strong>? This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-danger" id="modal-confirm-btn">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/landlord_dashboard.js') }}"></script>
+</body>
+</html>
