@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | Admin — Properties</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+{% include '_topbar.html' %}
+<div class="layout">
+  {% include '_sidebar.html' %}
+  <main class="page-main">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}
+          <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+        </div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="page-header">
+      <div>
+        <a href="/admin" class="back-crumb">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Admin
+        </a>
+        <h1 class="page-title">All Properties</h1>
+        <p class="page-sub">{{ properties|length }} propert{{ 'ies' if properties|length != 1 else 'y' }} listed</p>
+      </div>
+      <a href="/landlord/property/new" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Property
+      </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="admin-filter-bar">
+      <form method="GET" action="/admin/properties" class="admin-filter-form">
+        <div class="search-input-wrap" style="flex:1;min-width:200px">
+          <svg style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" value="{{ q }}" class="search-input" placeholder="Search title, address, landlord…" />
+        </div>
+        <div class="select-wrap" style="width:170px">
+          <select name="status" class="field-input" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            <option value="available"   {{ 'selected' if status_filter == 'available' }}>Available</option>
+            <option value="partial"     {{ 'selected' if status_filter == 'partial' }}>Partial</option>
+            <option value="occupied"    {{ 'selected' if status_filter == 'occupied' }}>Occupied</option>
+            <option value="maintenance" {{ 'selected' if status_filter == 'maintenance' }}>Maintenance</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+        <button type="submit" class="btn-primary" style="display:flex;align-items:center;gap:.4rem">Search</button>
+        {% if q or status_filter %}<a href="/admin/properties" class="btn-outline">Clear</a>{% endif %}
+      </form>
+    </div>
+
+    <div class="admin-panel">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>Landlord</th>
+            <th>Contact</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Price</th>
+            <th>Rooms</th>
+            <th>Added</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in properties %}
+          <tr id="prop-row-{{ p.id }}">
+            <td>
+              <a href="/landlord/property/{{ p.id }}" class="cell-main cell-link">{{ p.title }}</a>
+              <div class="cell-sub">{{ p.address or p.city or '—' }}</div>
+            </td>
+            <td class="cell-muted">{{ p.landlord_name }}</td>
+            <td>
+              {% if p.contact_phone %}
+              <a href="tel:{{ p.contact_phone }}" class="cell-link" style="display:block;font-size:.8rem">{{ p.contact_phone }}</a>
+              {% endif %}
+              {% if p.contact_email %}
+              <a href="mailto:{{ p.contact_email }}" class="cell-link" style="display:block;font-size:.8rem">{{ p.contact_email }}</a>
+              {% endif %}
+              {% if not p.contact_phone and not p.contact_email %}<span class="cell-muted">—</span>{% endif %}
+            </td>
+            <td class="cell-muted">{{ p.property_type|title }}</td>
+            <td>
+              <span class="status-badge status-{{ p.status }}">
+                {% if p.status == 'available' %}Available
+                {% elif p.status == 'partial' %}Partial
+                {% elif p.status == 'occupied' %}Occupied
+                {% else %}Maintenance{% endif %}
+              </span>
+            </td>
+            <td class="cell-price">{{ p.currency }} {{ "%.0f"|format(p.price_per_month) }}</td>
+            <td class="cell-muted">{{ p.available_rooms }}/{{ p.total_rooms }}</td>
+            <td class="cell-muted">{{ p.created_at[:10] if p.created_at else '—' }}</td>
+            <td>
+              <div class="action-group">
+                <a href="/landlord/property/{{ p.id }}" class="btn-action btn-view" title="View">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </a>
+                <a href="/landlord/property/{{ p.id }}/edit" class="btn-action btn-edit" title="Edit">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </a>
+                <button class="btn-action btn-delete" onclick="deleteProperty({{ p.id }}, '{{ p.title|e }}')" title="Delete">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="cell-empty">No properties match your search.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script>
+async function deleteProperty(pid, title) {
+  if (!confirm(`Remove "${title}" from the platform? This cannot be undone.`)) return;
+  const res  = await fetch(`/admin/property/${pid}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  const data = await res.json();
+  if (data.success) {
+    const row = document.getElementById(`prop-row-${pid}`);
+    if (row) row.remove();
+  } else {
+    alert(data.error || 'Failed to delete property');
+  }
+}
+</script>
+</body>
+</html>

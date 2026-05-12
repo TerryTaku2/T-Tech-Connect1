@@ -540,6 +540,60 @@ html, body {
 }
 .avail-full { background: rgba(255,255,255,.1); }
 
+/* ── Commission lock card ────────────────────────────────── */
+.commission-card {
+  background: var(--white);
+  border: 1.5px solid #e0e7ff;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.commission-lock {
+  width: 56px; height: 56px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto .85rem;
+}
+.commission-title { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+.commission-desc  { font-size: .82rem; color: #6b7280; margin-bottom: 1.1rem; line-height: 1.5; }
+.commission-breakdown {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+  margin-bottom: 1.1rem;
+  text-align: left;
+}
+.commission-row {
+  display: flex; justify-content: space-between;
+  font-size: .83rem; color: #6b7280;
+  padding: .2rem 0;
+}
+.commission-row--total {
+  font-weight: 700; color: var(--text-primary);
+  border-top: 1px solid var(--border);
+  margin-top: .4rem; padding-top: .5rem;
+  font-size: .95rem;
+}
+.btn-pay {
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  width: 100%;
+  background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+  color: #fff;
+  border: none; border-radius: 10px;
+  padding: .85rem 1rem;
+  font-size: .9rem; font-weight: 700;
+  cursor: pointer; text-decoration: none;
+  transition: opacity .2s, transform .15s;
+  margin-bottom: .75rem;
+  box-shadow: 0 4px 14px rgba(29,78,216,.35);
+}
+.btn-pay:hover { opacity: .9; transform: translateY(-1px); }
+.commission-note { font-size: .72rem; color: #9ca3af; line-height: 1.5; }
+
 /* ── Map (view page) ─────────────────────────────────────── */
 .map-wrap-sm { margin-top: 1rem; }
 .map-wrap-sm #google-map { height: 240px; border-radius: 10px; overflow: hidden; }

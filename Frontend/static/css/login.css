@@ -167,7 +167,7 @@ html, body {
 }
 .form-container {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
 }
 
 .form-header { margin-bottom: 2rem; text-align: center; }
@@ -366,30 +366,126 @@ html, body {
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner-svg { animation: spin .8s linear infinite; }
 
-/* ── Demo hint ───────────────────────────────────────────── */
-.demo-hint {
-  margin-top: 2rem;
-  padding: .85rem 1rem;
-  background: #f8faff;
-  border: 1px solid #dbeafe;
-  border-radius: var(--radius-sm);
-  font-size: .82rem;
-  color: var(--text-secondary);
+/* ── Auth tabs ───────────────────────────────────────────── */
+.auth-tabs {
+  display: flex;
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 1.75rem;
+  gap: 4px;
 }
-.demo-hint summary {
-  cursor: pointer;
+.auth-tab {
+  flex: 1;
+  padding: .6rem 1rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  font-size: .875rem;
   font-weight: 500;
-  color: var(--primary);
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all .2s;
+}
+.auth-tab.active {
+  background: var(--white);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,.1);
+}
+.auth-tab:not(.active):hover { color: var(--text-primary); }
+
+/* ── Role selection cards ────────────────────────────────── */
+.role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .65rem;
+  margin-top: .2rem;
+}
+.role-card {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .85rem .9rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--bg-input);
+  position: relative;
   user-select: none;
 }
-.demo-creds {
-  margin-top: .6rem;
+.role-radio { display: none; }
+.role-card:hover { border-color: var(--primary-light); background: #f0f6ff; }
+.role-card:has(.role-radio:checked) {
+  border-color: var(--primary);
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+.role-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  background: #e0e7ff;
+  color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.role-card:has(.role-radio:checked) .role-card-icon {
+  background: var(--primary);
+  color: #fff;
+}
+.role-card-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: .35rem;
-  padding-top: .6rem;
-  border-top: 1px solid #dbeafe;
+  gap: .15rem;
 }
+.role-card-title {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.role-card-sub {
+  font-size: .72rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+.role-card-check {
+  width: 20px; height: 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: transparent;
+  transition: all .2s;
+}
+.role-card:has(.role-radio:checked) .role-card-check {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ── Switch hint ─────────────────────────────────────────── */
+.switch-hint {
+  margin-top: 1.25rem;
+  text-align: center;
+  font-size: .875rem;
+  color: var(--text-secondary);
+}
+.switch-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: .875rem;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: none;
+}
+.switch-link:hover { text-decoration: underline; }
 
 /* ── Forgot password page ────────────────────────────────── */
 .back-link-wrap { margin-bottom: 1.5rem; }

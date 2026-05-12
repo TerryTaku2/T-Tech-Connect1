@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | Admin — Commissions</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+{% include '_topbar.html' %}
+<div class="layout">
+  {% include '_sidebar.html' %}
+  <main class="page-main">
+
+    <div class="page-header">
+      <div>
+        <a href="/admin" class="back-crumb">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Admin
+        </a>
+        <h1 class="page-title">Commission Payments</h1>
+        <p class="page-sub">All student commission payments recorded in the system.</p>
+      </div>
+      <div class="revenue-summary">
+        <span class="revenue-label">Total Revenue</span>
+        <span class="revenue-value">${{ "%.2f"|format(total_revenue) }}</span>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:1.5rem">
+      <div class="stat-card stat-emerald">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="stat-body"><span class="stat-value">${{ "%.2f"|format(total_revenue) }}</span><span class="stat-label">Total Revenue</span></div>
+      </div>
+      <div class="stat-card stat-blue">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+        <div class="stat-body"><span class="stat-value">{{ payments|length }}</span><span class="stat-label">Transactions</span></div>
+      </div>
+    </div>
+
+    <div class="admin-panel">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student</th>
+            <th>Property</th>
+            <th>Landlord</th>
+            <th>Amount</th>
+            <th>Reference</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pay in payments %}
+          <tr>
+            <td class="cell-muted">{{ loop.index }}</td>
+            <td>
+              <div class="cell-main">{{ pay.student_name }}</div>
+              <div class="cell-sub">{{ pay.student_email }}</div>
+            </td>
+            <td>
+              <a href="/landlord/property/{{ pay.property_id }}" class="cell-link">{{ pay.property_title }}</a>
+            </td>
+            <td class="cell-muted">{{ pay.landlord_name }}</td>
+            <td class="cell-price">{{ pay.currency }} {{ "%.2f"|format(pay.amount) }}</td>
+            <td class="cell-muted">{{ pay.reference or '—' }}</td>
+            <td class="cell-muted">{{ pay.paid_at[:16].replace('T',' ') if pay.paid_at else '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="cell-empty">No payments recorded yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

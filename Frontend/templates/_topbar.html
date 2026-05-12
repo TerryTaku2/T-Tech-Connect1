@@ -3,7 +3,7 @@
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <a href="/landlord" class="logo-wrap">
+    <a href="{% if user_role == 'admin' %}/admin{% elif user_role == 'landlord' %}/landlord{% else %}/dashboard{% endif %}" class="logo-wrap">
       <div class="logo-icon">
         <svg width="26" height="26" viewBox="0 0 40 40" fill="none">
           <rect width="40" height="40" rx="10" fill="#1e40af"/>

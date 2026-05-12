@@ -16,7 +16,7 @@
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle menu">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
-    <a href="{{ '/landlord' if user_role == 'landlord' else '/dashboard' }}" class="logo-wrap">
+    <a href="{{ '/admin' if user_role == 'admin' else ('/landlord' if user_role == 'landlord' else '/dashboard') }}" class="logo-wrap">
       <div class="logo-icon">
         <svg width="26" height="26" viewBox="0 0 40 40" fill="none">
           <rect width="40" height="40" rx="10" fill="#1e40af"/>
@@ -50,7 +50,16 @@
   <aside class="conv-panel" id="conv-panel">
 
     <div class="conv-panel-header">
-      <h2 class="conv-panel-title">Messages</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem">
+        <h2 class="conv-panel-title" style="margin:0">Messages</h2>
+        {% if user_role == 'admin' %}
+        <button id="new-msg-btn" onclick="openNewMsgModal()" title="New conversation"
+          style="background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:.35rem .7rem;cursor:pointer;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:.35rem">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New
+        </button>
+        {% endif %}
+      </div>
       <div class="conv-search-wrap">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="conv-search" class="conv-search" placeholder="Search conversations…" />
@@ -136,15 +145,134 @@
 
 </div>
 
+{% if user_role == 'admin' %}
+<!-- ── New Message modal (admin only) ──────────────────────────── -->
+<div id="new-msg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1200;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb">
+      <h3 style="margin:0;font-size:1rem;font-weight:700">New Conversation</h3>
+      <button onclick="closeNewMsgModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:1.2rem;line-height:1;padding:.2rem">✕</button>
+    </div>
+
+    <!-- User search -->
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid #f3f4f6">
+      <div style="position:relative">
+        <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="user-search-input" type="text" placeholder="Search by name or email…"
+          style="width:100%;padding:.6rem .85rem .6rem 2.2rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.875rem;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .2s"
+          onfocus="this.style.borderColor='#1d4ed8'" onblur="this.style.borderColor='#e5e7eb'"
+          oninput="searchUsers(this.value)" />
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="user-search-results" style="max-height:260px;overflow-y:auto">
+      <div style="text-align:center;padding:2rem;color:#9ca3af;font-size:.875rem">Type a name or email to search users.</div>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
 <!-- Inject server-side data -->
 <script>
   window.CURRENT_USER_ID   = {{ current_user_id }};
   window.CURRENT_USER_NAME = {{ user_name | tojson }};
   window.OPEN_CONV_ID      = {{ open_conv | tojson if open_conv else 'null' }};
+  window.USER_ROLE         = {{ user_role | tojson }};
 </script>
 
 <!-- Socket.IO -->
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+
+{% if user_role == 'admin' %}
+<script>
+let userSearchTimer = null;
+
+function openNewMsgModal() {
+  document.getElementById('new-msg-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('user-search-input').focus(), 50);
+}
+
+function closeNewMsgModal() {
+  document.getElementById('new-msg-modal').style.display = 'none';
+  document.getElementById('user-search-input').value = '';
+  document.getElementById('user-search-results').innerHTML =
+    '<div style="text-align:center;padding:2rem;color:#9ca3af;font-size:.875rem">Type a name or email to search users.</div>';
+}
+
+document.getElementById('new-msg-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeNewMsgModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeNewMsgModal();
+});
+
+function searchUsers(q) {
+  clearTimeout(userSearchTimer);
+  const results = document.getElementById('user-search-results');
+  if (!q.trim()) {
+    results.innerHTML = '<div style="text-align:center;padding:2rem;color:#9ca3af;font-size:.875rem">Type a name or email to search users.</div>';
+    return;
+  }
+  results.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#9ca3af;font-size:.875rem">Searching…</div>';
+  userSearchTimer = setTimeout(async () => {
+    try {
+      const res   = await fetch('/api/users/search?q=' + encodeURIComponent(q.trim()));
+      const users = await res.json();
+      if (!users.length) {
+        results.innerHTML = '<div style="text-align:center;padding:2rem;color:#9ca3af;font-size:.875rem">No users found.</div>';
+        return;
+      }
+      const roleColors = { student: '#1e40af', landlord: '#5b21b6', admin: '#92400e' };
+      const roleBg     = { student: '#dbeafe', landlord: '#ede9fe', admin: '#fef3c7' };
+      results.innerHTML = users.map(u => `
+        <div onclick="startConvWith(${u.id})"
+          style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1.25rem;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .15s"
+          onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background=''">
+          <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            ${escHtmlChat(u.full_name[0].toUpperCase())}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtmlChat(u.full_name)}</div>
+            <div style="font-size:.75rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtmlChat(u.email)}</div>
+          </div>
+          <span style="font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:99px;background:${roleBg[u.role]||'#f3f4f6'};color:${roleColors[u.role]||'#374151'};text-transform:capitalize;flex-shrink:0">${u.role}</span>
+        </div>`).join('');
+    } catch {
+      results.innerHTML = '<div style="text-align:center;padding:2rem;color:#dc2626;font-size:.875rem">Search failed. Try again.</div>';
+    }
+  }, 300);
+}
+
+async function startConvWith(recipientId) {
+  closeNewMsgModal();
+  try {
+    const res  = await fetch('/api/conversations/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient_id: recipientId }),
+    });
+    const data = await res.json();
+    if (data.conv_id) {
+      // Reload conversations then open this one
+      await loadConversations();
+      openConversation(data.conv_id);
+    }
+  } catch {
+    alert('Could not start conversation. Please try again.');
+  }
+}
+
+function escHtmlChat(str) {
+  return String(str).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])
+  );
+}
+</script>
+{% endif %}
 </body>
 </html>

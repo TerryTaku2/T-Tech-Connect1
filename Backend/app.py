@@ -48,6 +48,10 @@ def init_db():
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {typedef}")
+
+        prop_cols = {r[1] for r in conn.execute("PRAGMA table_info(properties)").fetchall()}
+        if 'nearby_landmark' not in prop_cols:
+            conn.execute("ALTER TABLE properties ADD COLUMN nearby_landmark TEXT DEFAULT ''")
         conn.commit()
 
         conn.executescript("""
@@ -136,6 +140,19 @@ def init_db():
                 FOREIGN KEY (conversation_id) REFERENCES conversations(id),
                 FOREIGN KEY (sender_id) REFERENCES users(id)
             );
+
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                property_id INTEGER NOT NULL,
+                amount REAL NOT NULL,
+                currency TEXT DEFAULT 'USD',
+                reference TEXT,
+                paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES users(id),
+                FOREIGN KEY (property_id) REFERENCES properties(id),
+                UNIQUE(student_id, property_id)
+            );
         """)
 
         seeds = [
@@ -195,6 +212,18 @@ def landlord_required(f):
     return decorated
 
 
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        if session.get('user_role') != 'admin':
+            flash('Admin access required.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def is_valid_email(email):
@@ -222,7 +251,7 @@ def get_failed_attempts(email, ip):
 def role_redirect(role):
     return {
         'landlord': url_for('landlord_dashboard'),
-        'admin':    url_for('dashboard'),
+        'admin':    url_for('admin_dashboard'),
         'student':  url_for('dashboard'),
     }.get(role, url_for('dashboard'))
 
@@ -238,6 +267,14 @@ def get_unread_count(user_id):
               AND m.is_deleted = 0
         """, (user_id, user_id)).fetchone()
         return row['cnt'] if row else 0
+
+
+def has_paid(student_id, property_id):
+    with get_db() as conn:
+        return bool(conn.execute(
+            "SELECT 1 FROM payments WHERE student_id=? AND property_id=?",
+            (student_id, property_id)
+        ).fetchone())
 
 
 def _get_own_property(pid):
@@ -311,9 +348,10 @@ def _save_property(pid):
     country       = f.get('country', 'Zimbabwe').strip()
     lat           = f.get('latitude', '').strip() or None
     lng           = f.get('longitude', '').strip() or None
-    services      = json.dumps(f.getlist('services'))
-    contact_phone = f.get('contact_phone', '').strip()
-    contact_email = f.get('contact_email', '').strip()
+    services         = json.dumps(f.getlist('services'))
+    contact_phone    = f.get('contact_phone', '').strip()
+    contact_email    = f.get('contact_email', '').strip()
+    nearby_landmark  = f.get('nearby_landmark', '').strip()
 
     if not title:   errors['title']   = 'Property title is required.'
     if not price:   errors['price']   = 'Monthly price is required.'
@@ -335,7 +373,7 @@ def _save_property(pid):
         int(total_rooms), int(avail_rooms), int(bathrooms),
         price, currency, address, city, country,
         float(lat) if lat else None, float(lng) if lng else None,
-        services, contact_phone, contact_email
+        services, contact_phone, contact_email, nearby_landmark
     )
 
     with get_db() as conn:
@@ -344,8 +382,9 @@ def _save_property(pid):
                 INSERT INTO properties
                     (landlord_id,title,property_type,description,status,is_shared,
                      total_rooms,available_rooms,bathrooms,price_per_month,currency,
-                     address,city,country,latitude,longitude,services,contact_phone,contact_email)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     address,city,country,latitude,longitude,services,contact_phone,contact_email,
+                     nearby_landmark)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (session['user_id'], *data))
             property_id = cur.lastrowid
             flash('Property listed successfully!', 'success')
@@ -355,7 +394,7 @@ def _save_property(pid):
                     title=?,property_type=?,description=?,status=?,is_shared=?,
                     total_rooms=?,available_rooms=?,bathrooms=?,price_per_month=?,currency=?,
                     address=?,city=?,country=?,latitude=?,longitude=?,
-                    services=?,contact_phone=?,contact_email=?,
+                    services=?,contact_phone=?,contact_email=?,nearby_landmark=?,
                     updated_at=CURRENT_TIMESTAMP
                 WHERE id=? AND landlord_id=?
             """, (*data, pid, session['user_id']))
@@ -378,6 +417,52 @@ def index():
     if 'user_id' in session:
         return redirect(role_redirect(session.get('user_role')))
     return redirect(url_for('login'))
+
+
+@app.route('/register', methods=['POST'])
+@limiter.limit("5 per minute")
+def register():
+    if 'user_id' in session:
+        return jsonify({'success': False, 'error': 'Already logged in'}), 400
+
+    data      = request.get_json() if request.is_json else request.form
+    full_name = (data.get('full_name') or '').strip()
+    email     = (data.get('email') or '').strip().lower()
+    password  = data.get('password') or ''
+    role      = (data.get('role') or '').strip()
+
+    def err(msg, code=400):
+        return jsonify({'success': False, 'error': msg}), code
+
+    if not full_name:
+        return err('Full name is required.')
+    if not email or not is_valid_email(email):
+        return err('A valid email address is required.')
+    if role not in ('student', 'landlord'):
+        return err('Please select Tenant or Landlord.')
+    if len(password) < 8:
+        return err('Password must be at least 8 characters.')
+
+    with get_db() as conn:
+        if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
+            return err('An account with this email already exists.')
+        conn.execute(
+            "INSERT INTO users (full_name, email, password_hash, role) VALUES (?,?,?,?)",
+            (full_name, email, generate_password_hash(password), role)
+        )
+        conn.commit()
+        user_id = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()['id']
+
+    session.clear()
+    session['user_id']    = user_id
+    session['user_name']  = full_name
+    session['user_role']  = role
+    session['user_email'] = email
+
+    dest = role_redirect(role)
+    if request.is_json:
+        return jsonify({'success': True, 'redirect': dest, 'role': role})
+    return redirect(dest)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -445,11 +530,64 @@ def login():
 def dashboard():
     if session.get('user_role') == 'landlord':
         return redirect(url_for('landlord_dashboard'))
+    if session.get('user_role') == 'admin':
+        return redirect(url_for('admin_dashboard'))
+
+    q         = request.args.get('q', '').strip()
+    prop_type = request.args.get('type', '').strip()
+    max_price = request.args.get('max_price', '').strip()
+
+    filters = ["p.is_active=1"]
+    params  = []
+    if q:
+        like = f'%{q}%'
+        filters.append("(p.title LIKE ? OR p.nearby_landmark LIKE ? OR p.city LIKE ? OR p.description LIKE ?)")
+        params += [like, like, like, like]
+    if prop_type:
+        filters.append("p.property_type=?")
+        params.append(prop_type)
+    if max_price:
+        try:
+            filters.append("p.price_per_month<=?")
+            params.append(float(max_price))
+        except ValueError:
+            pass
+
+    where = ' AND '.join(filters)
+    with get_db() as conn:
+        stats = conn.execute("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available,
+                   SUM(CASE WHEN available_rooms > 0 THEN available_rooms ELSE 0 END) as rooms_available
+            FROM properties WHERE is_active=1
+        """).fetchone()
+
+        props = conn.execute(f"""
+            SELECT p.*, u.full_name as landlord_name
+            FROM properties p JOIN users u ON p.landlord_id=u.id
+            WHERE {where}
+            ORDER BY p.created_at DESC
+        """, params).fetchall()
+
+    prop_list = []
+    for p in props:
+        d = {**dict(p), 'services': json.loads(p['services'] or '[]')}
+        with get_db() as conn:
+            cover = conn.execute(
+                "SELECT filename FROM property_images WHERE property_id=? AND is_primary=1 LIMIT 1",
+                (p['id'],)
+            ).fetchone()
+        d['cover_image'] = cover['filename'] if cover else None
+        prop_list.append(d)
+
     unread = get_unread_count(session['user_id'])
     return render_template('dashboard.html',
                            user_name=session.get('user_name'),
                            user_role=session.get('user_role'),
                            user_email=session.get('user_email'),
+                           properties=prop_list,
+                           stats=stats,
+                           q=q, prop_type=prop_type, max_price=max_price,
                            unread_count=unread)
 
 
@@ -591,6 +729,42 @@ def property_image_set_cover(pid, img_id):
     return jsonify({'success': True})
 
 
+@app.route('/property/<int:pid>/pay', methods=['POST'])
+@login_required
+def pay_commission(pid):
+    uid  = session['user_id']
+    role = session.get('user_role')
+    if role not in ('student', 'admin'):
+        return jsonify({'error': 'Only students can pay commission'}), 403
+
+    with get_db() as conn:
+        prop = conn.execute(
+            "SELECT price_per_month, currency FROM properties WHERE id=? AND is_active=1", (pid,)
+        ).fetchone()
+    if not prop:
+        return jsonify({'error': 'Property not found'}), 404
+
+    if has_paid(uid, pid):
+        return jsonify({'success': True, 'already_paid': True})
+
+    data      = request.get_json() or {}
+    reference = data.get('reference', '').strip()
+    method    = data.get('method', '').strip()
+    if not reference:
+        return jsonify({'error': 'Payment reference is required'}), 400
+
+    amount = round(prop['price_per_month'] * 0.05, 2)
+    with get_db() as conn:
+        conn.execute(
+            """INSERT OR IGNORE INTO payments (student_id, property_id, amount, currency, reference)
+               VALUES (?,?,?,?,?)""",
+            (uid, pid, amount, prop['currency'], f"[{method}] {reference}")
+        )
+        conn.commit()
+
+    return jsonify({'success': True})
+
+
 @app.route('/landlord/property/<int:pid>')
 @login_required
 def property_view(pid):
@@ -605,15 +779,66 @@ def property_view(pid):
         return redirect(url_for('dashboard'))
     d = {**dict(prop), 'services': json.loads(prop['services'] or '[]'),
          'images': _get_images(pid)}
+    d['commission'] = round(d['price_per_month'] * 0.05, 2)
+
+    uid  = session['user_id']
+    role = session.get('user_role')
+    # Landlords, admins, and the property owner always have full access
+    paid = True if role in ('landlord', 'admin') else has_paid(uid, pid)
+
     return render_template('property_view.html', prop=d, maps_key=GOOGLE_MAPS_API_KEY,
                            user_name=session.get('user_name'),
-                           user_role=session.get('user_role'),
+                           user_role=role,
                            user_email=session.get('user_email'),
-                           current_user_id=session.get('user_id'),
-                           unread_count=get_unread_count(session['user_id']))
+                           current_user_id=uid,
+                           has_paid=paid,
+                           unread_count=get_unread_count(uid))
 
 
 # ── Messaging routes ──────────────────────────────────────────────────────────
+
+@app.route('/contact-support')
+@login_required
+def contact_support():
+    uid  = session['user_id']
+    role = session.get('user_role')
+    if role == 'admin':
+        return redirect(url_for('messages_page'))
+
+    with get_db() as conn:
+        admin = conn.execute(
+            "SELECT id FROM users WHERE role='admin' AND is_active=1 AND id!=? ORDER BY id LIMIT 1",
+            (uid,)
+        ).fetchone()
+        if not admin:
+            flash('No support agent is available right now. Please try again later.', 'warning')
+            return redirect(url_for('dashboard') if role == 'student' else url_for('landlord_dashboard'))
+
+        admin_id = admin['id']
+
+        # Find existing support conversation (no property attached)
+        existing = conn.execute("""
+            SELECT c.id FROM conversations c
+            JOIN conversation_members cm1 ON c.id=cm1.conversation_id AND cm1.user_id=?
+            JOIN conversation_members cm2 ON c.id=cm2.conversation_id AND cm2.user_id=?
+            WHERE c.property_id IS NULL
+            LIMIT 1
+        """, (uid, admin_id)).fetchone()
+
+        if existing:
+            return redirect(url_for('messages_page', c=existing['id']))
+
+        cur = conn.execute(
+            "INSERT INTO conversations (subject, property_id) VALUES (?, NULL)",
+            ('T-Tech Connect Support',)
+        )
+        conv_id = cur.lastrowid
+        conn.execute("INSERT INTO conversation_members (conversation_id, user_id) VALUES (?,?)", (conv_id, uid))
+        conn.execute("INSERT INTO conversation_members (conversation_id, user_id) VALUES (?,?)", (conv_id, admin_id))
+        conn.commit()
+
+    return redirect(url_for('messages_page', c=conv_id))
+
 
 @app.route('/messages')
 @login_required
@@ -708,6 +933,16 @@ def api_start_conversation():
     if recipient_id == uid:
         return jsonify({'error': 'Cannot message yourself'}), 400
 
+    # Commission gate: students need to have paid for the property — unless messaging admin
+    role = session.get('user_role')
+    if role == 'student' and property_id:
+        with get_db() as conn:
+            recipient_role = (conn.execute(
+                "SELECT role FROM users WHERE id=?", (recipient_id,)
+            ).fetchone() or {}).get('role')
+        if recipient_role != 'admin' and not has_paid(uid, property_id):
+            return jsonify({'error': 'Commission payment required to contact this landlord'}), 403
+
     with get_db() as conn:
         # Find existing conversation between these two users about this property
         if property_id:
@@ -742,6 +977,46 @@ def api_start_conversation():
     return jsonify({'conv_id': conv_id})
 
 
+@app.route('/api/conversations/<int:conv_id>/send', methods=['POST'])
+@login_required
+def api_send_message_rest(conv_id):
+    uid     = session['user_id']
+    data    = request.get_json() or {}
+    content = (data.get('content') or '').strip()
+
+    if not content:
+        return jsonify({'error': 'Message cannot be empty'}), 400
+
+    with get_db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?",
+            (conv_id, uid)
+        ).fetchone():
+            return jsonify({'error': 'Not a member'}), 403
+
+        cur = conn.execute(
+            "INSERT INTO messages (conversation_id, sender_id, content) VALUES (?,?,?)",
+            (conv_id, uid, content)
+        )
+        msg_id = cur.lastrowid
+        conn.execute("UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?", (conv_id,))
+        conn.execute(
+            "UPDATE conversation_members SET last_read_at=CURRENT_TIMESTAMP WHERE conversation_id=? AND user_id=?",
+            (conv_id, uid)
+        )
+        conn.commit()
+
+        msg_row = conn.execute(
+            """SELECT m.*, u.full_name as sender_name, u.role as sender_role
+               FROM messages m JOIN users u ON m.sender_id=u.id WHERE m.id=?""",
+            (msg_id,)
+        ).fetchone()
+
+    # Push to anyone already in the Socket.IO room (e.g. landlord online in chat)
+    socketio.emit('new_msg', dict(msg_row), room=f'conv_{conv_id}')
+    return jsonify({'success': True, 'msg_id': msg_id})
+
+
 @app.route('/api/conversations/<int:conv_id>/read', methods=['POST'])
 @login_required
 def api_mark_read(conv_id):
@@ -759,6 +1034,33 @@ def api_mark_read(conv_id):
 @login_required
 def api_unread_count():
     return jsonify({'count': get_unread_count(session['user_id'])})
+
+
+@app.route('/api/users/search')
+@login_required
+def api_users_search():
+    uid  = session['user_id']
+    role = session.get('user_role')
+    q    = request.args.get('q', '').strip()
+    with get_db() as conn:
+        if role == 'admin':
+            # Admin can search all active users except themselves
+            if q:
+                rows = conn.execute(
+                    """SELECT id, full_name, email, role FROM users
+                       WHERE is_active=1 AND id!=?
+                         AND (full_name LIKE ? OR email LIKE ?)
+                       ORDER BY full_name LIMIT 20""",
+                    (uid, f'%{q}%', f'%{q}%')
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT id, full_name, email, role FROM users WHERE is_active=1 AND id!=? ORDER BY full_name LIMIT 20",
+                    (uid,)
+                ).fetchall()
+        else:
+            return jsonify({'error': 'Not authorised'}), 403
+    return jsonify([dict(r) for r in rows])
 
 
 @app.route('/api/properties')
@@ -870,8 +1172,178 @@ def on_typing(data):
     }, room=f'conv_{conv_id}', include_self=False)
 
 
+# ── Admin routes ──────────────────────────────────────────────────────────────
+
+def _admin_common():
+    return dict(user_name=session.get('user_name'), user_role=session.get('user_role'),
+                unread_count=get_unread_count(session['user_id']))
+
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    with get_db() as conn:
+        stats = conn.execute("""
+            SELECT
+              (SELECT COUNT(*) FROM users WHERE is_active=1)                           AS total_users,
+              (SELECT COUNT(*) FROM users WHERE role='student'  AND is_active=1)       AS students,
+              (SELECT COUNT(*) FROM users WHERE role='landlord' AND is_active=1)       AS landlords,
+              (SELECT COUNT(*) FROM properties WHERE is_active=1)                      AS total_props,
+              (SELECT COUNT(*) FROM properties WHERE status='available' AND is_active=1) AS avail_props,
+              (SELECT COALESCE(SUM(amount),0) FROM payments)                           AS total_revenue,
+              (SELECT COUNT(*) FROM payments)                                          AS total_payments
+        """).fetchone()
+
+        recent_users = conn.execute(
+            "SELECT id,full_name,email,role,is_active,created_at FROM users ORDER BY created_at DESC LIMIT 6"
+        ).fetchall()
+
+        recent_props = conn.execute("""
+            SELECT p.id,p.title,p.status,p.price_per_month,p.currency,p.created_at,
+                   u.full_name AS landlord_name
+            FROM properties p JOIN users u ON p.landlord_id=u.id
+            WHERE p.is_active=1 ORDER BY p.created_at DESC LIMIT 6
+        """).fetchall()
+
+        recent_payments = conn.execute("""
+            SELECT pay.amount,pay.currency,pay.reference,pay.paid_at,
+                   u.full_name AS student_name, p.title AS property_title
+            FROM payments pay
+            JOIN users u ON pay.student_id=u.id
+            JOIN properties p ON pay.property_id=p.id
+            ORDER BY pay.paid_at DESC LIMIT 6
+        """).fetchall()
+
+    return render_template('admin_dashboard.html',
+                           stats=stats,
+                           recent_users=recent_users,
+                           recent_props=recent_props,
+                           recent_payments=recent_payments,
+                           **_admin_common())
+
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    q           = request.args.get('q', '').strip()
+    role_filter = request.args.get('role', '').strip()
+    filters, params = [], []
+    if q:
+        filters.append("(full_name LIKE ? OR email LIKE ?)")
+        params += [f'%{q}%', f'%{q}%']
+    if role_filter:
+        filters.append("role=?")
+        params.append(role_filter)
+    where = ('WHERE ' + ' AND '.join(filters)) if filters else ''
+    with get_db() as conn:
+        users = conn.execute(
+            f"SELECT id,full_name,email,role,is_active,phone,created_at,last_login "
+            f"FROM users {where} ORDER BY created_at DESC", params
+        ).fetchall()
+    return render_template('admin_users.html', users=users,
+                           q=q, role_filter=role_filter, **_admin_common())
+
+
+@app.route('/admin/users/<int:uid>/toggle', methods=['POST'])
+@admin_required
+def admin_user_toggle(uid):
+    if uid == session['user_id']:
+        return jsonify({'error': "You cannot deactivate your own account"}), 400
+    with get_db() as conn:
+        user = conn.execute("SELECT is_active FROM users WHERE id=?", (uid,)).fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        new = 0 if user['is_active'] else 1
+        conn.execute("UPDATE users SET is_active=? WHERE id=?", (new, uid))
+        conn.commit()
+    return jsonify({'success': True, 'is_active': new})
+
+
+@app.route('/admin/users/<int:uid>/set-role', methods=['POST'])
+@admin_required
+def admin_user_set_role(uid):
+    if uid == session['user_id']:
+        return jsonify({'error': "You cannot change your own role"}), 400
+    role = (request.get_json() or {}).get('role', '')
+    if role not in ('student', 'landlord', 'admin'):
+        return jsonify({'error': 'Invalid role'}), 400
+    with get_db() as conn:
+        if not conn.execute("SELECT id FROM users WHERE id=?", (uid,)).fetchone():
+            return jsonify({'error': 'User not found'}), 404
+        conn.execute("UPDATE users SET role=? WHERE id=?", (role, uid))
+        conn.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/users/<int:uid>/delete', methods=['POST'])
+@admin_required
+def admin_user_delete(uid):
+    if uid == session['user_id']:
+        return jsonify({'error': "You cannot delete your own account"}), 400
+    with get_db() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/admin/properties')
+@admin_required
+def admin_properties():
+    q             = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    filters = ["p.is_active=1"]
+    params  = []
+    if q:
+        filters.append("(p.title LIKE ? OR p.address LIKE ? OR u.full_name LIKE ?)")
+        params += [f'%{q}%', f'%{q}%', f'%{q}%']
+    if status_filter:
+        filters.append("p.status=?")
+        params.append(status_filter)
+    with get_db() as conn:
+        props = conn.execute(
+            f"SELECT p.*,u.full_name AS landlord_name FROM properties p "
+            f"JOIN users u ON p.landlord_id=u.id WHERE {' AND '.join(filters)} "
+            f"ORDER BY p.created_at DESC", params
+        ).fetchall()
+    prop_list = [{**dict(p), 'services': json.loads(p['services'] or '[]')} for p in props]
+    return render_template('admin_properties.html', properties=prop_list,
+                           q=q, status_filter=status_filter, **_admin_common())
+
+
+@app.route('/admin/property/<int:pid>/delete', methods=['POST'])
+@admin_required
+def admin_property_delete(pid):
+    with get_db() as conn:
+        conn.execute("UPDATE properties SET is_active=0 WHERE id=?", (pid,))
+        conn.commit()
+    if request.is_json:
+        return jsonify({'success': True})
+    flash('Property removed.', 'success')
+    return redirect(url_for('admin_properties'))
+
+
+@app.route('/admin/payments')
+@admin_required
+def admin_payments():
+    with get_db() as conn:
+        payments = conn.execute("""
+            SELECT pay.id,pay.amount,pay.currency,pay.reference,pay.paid_at,
+                   u.full_name AS student_name, u.email AS student_email,
+                   p.title AS property_title, p.id AS property_id,
+                   lu.full_name AS landlord_name
+            FROM payments pay
+            JOIN users u  ON pay.student_id=u.id
+            JOIN properties p ON pay.property_id=p.id
+            JOIN users lu ON p.landlord_id=lu.id
+            ORDER BY pay.paid_at DESC
+        """).fetchall()
+        total_revenue = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) AS t FROM payments"
+        ).fetchone()['t']
+    return render_template('admin_payments.html', payments=payments,
+                           total_revenue=total_revenue, **_admin_common())
+
+
 if __name__ == '__main__':
     init_db()
-    # Use Werkzeug's standard dev server so all HTTP routes work correctly.
-    # Socket.IO automatically falls back to long-polling, which is fine for development.
-    app.run(debug=True, port=5000)
+    socketio.run(app, debug=True, port=5000, allow_unsafe_werkzeug=True)

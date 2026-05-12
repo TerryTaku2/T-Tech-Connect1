@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+{% include '_topbar.html' %}
+<div class="layout">
+  {% include '_sidebar.html' %}
+  <main class="page-main">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Admin Dashboard</h1>
+        <p class="page-sub">Full system overview and controls.</p>
+      </div>
+    </div>
+
+    <!-- Stats grid -->
+    <div class="stats-grid stats-grid-6">
+      <div class="stat-card stat-blue">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="stat-body"><span class="stat-value">{{ stats.total_users or 0 }}</span><span class="stat-label">Total Users</span></div>
+      </div>
+      <div class="stat-card stat-indigo">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="stat-body"><span class="stat-value">{{ stats.students or 0 }}</span><span class="stat-label">Students</span></div>
+      </div>
+      <div class="stat-card stat-purple">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="stat-body"><span class="stat-value">{{ stats.landlords or 0 }}</span><span class="stat-label">Landlords</span></div>
+      </div>
+      <div class="stat-card stat-amber">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg></div>
+        <div class="stat-body"><span class="stat-value">{{ stats.total_props or 0 }}</span><span class="stat-label">Properties</span></div>
+      </div>
+      <div class="stat-card stat-green">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg></div>
+        <div class="stat-body"><span class="stat-value">{{ stats.avail_props or 0 }}</span><span class="stat-label">Available</span></div>
+      </div>
+      <div class="stat-card stat-emerald">
+        <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="stat-body"><span class="stat-value">${{ "%.2f"|format(stats.total_revenue or 0) }}</span><span class="stat-label">Revenue</span></div>
+      </div>
+    </div>
+
+    <!-- Recent panels -->
+    <div class="admin-panels">
+
+      <!-- Recent Users -->
+      <div class="admin-panel">
+        <div class="admin-panel-header">
+          <h3 class="admin-panel-title">Recent Users</h3>
+          <a href="/admin/users" class="admin-panel-link">View all</a>
+        </div>
+        <table class="admin-table">
+          <thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Joined</th></tr></thead>
+          <tbody>
+            {% for u in recent_users %}
+            <tr>
+              <td>
+                <div class="cell-main">{{ u.full_name }}</div>
+                <div class="cell-sub">{{ u.email }}</div>
+              </td>
+              <td><span class="role-pill role-{{ u.role }}">{{ u.role|title }}</span></td>
+              <td><span class="status-dot {{ 'dot-green' if u.is_active else 'dot-red' }}">{{ 'Active' if u.is_active else 'Inactive' }}</span></td>
+              <td class="cell-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="cell-empty">No users yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Recent Properties -->
+      <div class="admin-panel">
+        <div class="admin-panel-header">
+          <h3 class="admin-panel-title">Recent Properties</h3>
+          <a href="/admin/properties" class="admin-panel-link">View all</a>
+        </div>
+        <table class="admin-table">
+          <thead><tr><th>Property</th><th>Landlord</th><th>Status</th><th>Price</th></tr></thead>
+          <tbody>
+            {% for p in recent_props %}
+            <tr>
+              <td>
+                <a href="/landlord/property/{{ p.id }}" class="cell-main cell-link">{{ p.title }}</a>
+              </td>
+              <td class="cell-muted">{{ p.landlord_name }}</td>
+              <td><span class="status-badge status-{{ p.status }}">{{ p.status|title }}</span></td>
+              <td class="cell-price">{{ p.currency }} {{ "%.0f"|format(p.price_per_month) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="cell-empty">No properties yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="admin-panel" style="margin-top:1.5rem">
+      <div class="admin-panel-header">
+        <h3 class="admin-panel-title">Recent Commission Payments</h3>
+        <a href="/admin/payments" class="admin-panel-link">View all</a>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>Student</th><th>Property</th><th>Amount</th><th>Reference</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for pay in recent_payments %}
+          <tr>
+            <td class="cell-main">{{ pay.student_name }}</td>
+            <td class="cell-muted">{{ pay.property_title }}</td>
+            <td class="cell-price">{{ pay.currency }} {{ "%.2f"|format(pay.amount) }}</td>
+            <td class="cell-muted">{{ pay.reference or '—' }}</td>
+            <td class="cell-muted">{{ pay.paid_at[:10] if pay.paid_at else '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="cell-empty">No payments yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

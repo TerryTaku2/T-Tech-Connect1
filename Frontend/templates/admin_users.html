@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T-Tech Connect | Admin — Users</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+{% include '_topbar.html' %}
+<div class="layout">
+  {% include '_sidebar.html' %}
+  <main class="page-main">
+
+    <div class="page-header">
+      <div>
+        <a href="/admin" class="back-crumb">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Admin
+        </a>
+        <h1 class="page-title">User Management</h1>
+        <p class="page-sub">{{ users|length }} user{{ 's' if users|length != 1 }} found</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="admin-filter-bar">
+      <form method="GET" action="/admin/users" class="admin-filter-form">
+        <div class="search-input-wrap" style="flex:1;min-width:200px">
+          <svg style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" value="{{ q }}" class="search-input" placeholder="Search name or email…" />
+        </div>
+        <div class="select-wrap" style="width:150px">
+          <select name="role" class="field-input" onchange="this.form.submit()">
+            <option value="">All Roles</option>
+            <option value="student"  {{ 'selected' if role_filter == 'student' }}>Students</option>
+            <option value="landlord" {{ 'selected' if role_filter == 'landlord' }}>Landlords</option>
+            <option value="admin"    {{ 'selected' if role_filter == 'admin' }}>Admins</option>
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+        <button type="submit" class="btn-primary" style="display:flex;align-items:center;gap:.4rem">Search</button>
+        {% if q or role_filter %}<a href="/admin/users" class="btn-outline">Clear</a>{% endif %}
+      </form>
+    </div>
+
+    <div class="admin-panel">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Joined</th>
+            <th>Last Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr id="user-row-{{ u.id }}">
+            <td>
+              <div class="user-cell">
+                <div class="user-cell-avatar">{{ u.full_name[0].upper() }}</div>
+                <div>
+                  <div class="cell-main">{{ u.full_name }}</div>
+                  <div class="cell-sub">{{ u.email }}</div>
+                  {% if u.phone %}<div class="cell-sub">{{ u.phone }}</div>{% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <select class="role-select" data-uid="{{ u.id }}" onchange="setRole(this)">
+                <option value="student"  {{ 'selected' if u.role == 'student' }}>Student</option>
+                <option value="landlord" {{ 'selected' if u.role == 'landlord' }}>Landlord</option>
+                <option value="admin"    {{ 'selected' if u.role == 'admin' }}>Admin</option>
+              </select>
+            </td>
+            <td>
+              <button class="toggle-btn {{ 'toggle-active' if u.is_active else 'toggle-inactive' }}"
+                      id="toggle-{{ u.id }}" data-uid="{{ u.id }}" data-active="{{ u.is_active }}"
+                      onclick="toggleUser({{ u.id }})">
+                {{ 'Active' if u.is_active else 'Inactive' }}
+              </button>
+            </td>
+            <td class="cell-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+            <td class="cell-muted">{{ u.last_login[:10] if u.last_login else 'Never' }}</td>
+            <td>
+              <div class="action-group">
+                <button class="btn-action btn-view" onclick="messageUser({{ u.id }})" title="Send Message">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Message
+                </button>
+                <button class="btn-action btn-delete" onclick="deleteUser({{ u.id }}, '{{ u.full_name|e }}')" title="Delete">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="cell-empty">No users match your search.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script>
+async function toggleUser(uid) {
+  const btn = document.getElementById(`toggle-${uid}`);
+  const res  = await fetch(`/admin/users/${uid}/toggle`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    const active = data.is_active;
+    btn.textContent = active ? 'Active' : 'Inactive';
+    btn.className = `toggle-btn ${active ? 'toggle-active' : 'toggle-inactive'}`;
+  } else {
+    alert(data.error || 'Failed');
+  }
+}
+
+async function setRole(select) {
+  const uid  = select.dataset.uid;
+  const role = select.value;
+  const res  = await fetch(`/admin/users/${uid}/set-role`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  });
+  const data = await res.json();
+  if (!data.success) {
+    alert(data.error || 'Failed to update role');
+    select.value = select.dataset.original;
+  }
+}
+// Store original values for rollback
+document.querySelectorAll('.role-select').forEach(s => s.dataset.original = s.value);
+
+async function deleteUser(uid, name) {
+  if (!confirm(`Permanently delete "${name}"? This cannot be undone.`)) return;
+  const res  = await fetch(`/admin/users/${uid}/delete`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    const row = document.getElementById(`user-row-${uid}`);
+    if (row) row.remove();
+  } else {
+    alert(data.error || 'Failed to delete user');
+  }
+}
+
+async function messageUser(uid) {
+  const res  = await fetch('/api/conversations/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipient_id: uid }),
+  });
+  const data = await res.json();
+  if (data.conv_id) window.location.href = '/messages?c=' + data.conv_id;
+  else alert(data.error || 'Could not open conversation.');
+}
+</script>
+</body>
+</html>

@@ -3,113 +3,262 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T-Tech Connect | Accommodation | Dashboard</title>
+  <title>T-Tech Connect | Student Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
 
-  <header class="topbar">
-    <div class="topbar-left">
-      <div class="logo-wrap">
-        <div class="logo-icon">
-          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="10" fill="#1e40af"/>
-            <path d="M8 14h24M8 20h16M8 26h20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-            <circle cx="30" cy="26" r="5" fill="white"/>
-            <path d="M28 26l1.5 1.5L32 24" stroke="#1e40af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <span class="logo-text">T-Tech Connect</span>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <div class="user-pill">
-        <div class="user-avatar">{{ user_name[0].upper() }}</div>
-        <div class="user-info">
-          <span class="user-name">{{ user_name }}</span>
-          <span class="user-badge badge-{{ user_role }}">{{ user_role }}</span>
-        </div>
-      </div>
-      <a href="/logout" class="btn-logout">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-        Logout
-      </a>
-    </div>
-  </header>
+{% include '_topbar.html' %}
 
-  <main class="main-content">
-    <div class="welcome-banner">
-      <div>
-        <h1 class="welcome-title">Welcome back, {{ user_name.split()[0] }}!</h1>
-        <p class="welcome-sub">You are signed in as <strong>{{ user_email }}</strong> · <span class="role-chip badge-{{ user_role }}">{{ user_role }}</span></p>
+<div class="layout">
+  {% include '_sidebar.html' %}
+
+  <main class="page-main">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ msg }}
+          <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+        </div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Welcome banner -->
+    <div class="student-banner">
+      <div class="student-banner-content">
+        <div class="student-banner-text">
+          <h1 class="student-banner-title">Welcome back, {{ user_name.split()[0] }}!</h1>
+          <p class="student-banner-sub">Browse available student accommodation and contact landlords directly.</p>
+        </div>
+        <a href="/messages" class="student-banner-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Messages
+          {% if unread_count and unread_count > 0 %}
+          <span class="banner-badge">{{ unread_count }}</span>
+          {% endif %}
+        </a>
+      </div>
+      <div class="banner-decoration">
+        <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
     </div>
 
+    <!-- Stats row -->
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon stat-blue">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
+      <div class="stat-card stat-blue">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         </div>
-        <div class="stat-info">
-          <span class="stat-value">48</span>
-          <span class="stat-label">Total Rooms</span>
+        <div class="stat-body">
+          <span class="stat-value">{{ stats.total or 0 }}</span>
+          <span class="stat-label">Total Listings</span>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-green">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
+      <div class="stat-card stat-green">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
         </div>
-        <div class="stat-info">
-          <span class="stat-value">36</span>
-          <span class="stat-label">Occupied</span>
+        <div class="stat-body">
+          <span class="stat-value">{{ stats.available or 0 }}</span>
+          <span class="stat-label">Available Now</span>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-amber">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
+      <div class="stat-card stat-amber">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
         </div>
-        <div class="stat-info">
-          <span class="stat-value">5</span>
-          <span class="stat-label">Pending Requests</span>
+        <div class="stat-body">
+          <span class="stat-value">{{ stats.rooms_available or 0 }}</span>
+          <span class="stat-label">Open Rooms</span>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon stat-purple">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
+      <div class="stat-card stat-purple">
+        <div class="stat-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         </div>
-        <div class="stat-info">
-          <span class="stat-value">12</span>
-          <span class="stat-label">Available</span>
+        <div class="stat-body">
+          <span class="stat-value">{{ unread_count or 0 }}</span>
+          <span class="stat-label">Unread Messages</span>
         </div>
       </div>
     </div>
 
-    <div class="info-notice">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      Login successful. Full dashboard modules are coming soon.
+    <!-- Search & filters -->
+    <div class="search-card">
+      <form method="GET" action="/dashboard" class="search-form" id="search-form">
+        <div class="search-input-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" value="{{ q }}" class="search-input"
+                 placeholder="Search by name or area…" autocomplete="off" />
+          {% if q %}
+          <button type="button" class="search-clear" onclick="clearField('q')">×</button>
+          {% endif %}
+        </div>
+
+        <div class="select-wrap filter-select">
+          <select name="type" class="field-input" onchange="this.form.submit()">
+            <option value="">All Types</option>
+            {% set types = [('apartment','Apartment'),('house','House'),('room','Single Room'),
+                            ('cottage','Cottage'),('flat','Flat'),('studio','Studio'),('hostel','Hostel')] %}
+            {% for val, label in types %}
+            <option value="{{ val }}" {{ 'selected' if prop_type == val }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <span class="select-arrow">▾</span>
+        </div>
+
+        <div class="price-filter-wrap">
+          <span class="price-filter-label">Max $</span>
+          <input type="number" name="max_price" value="{{ max_price }}"
+                 class="field-input price-filter-input" placeholder="Any" min="0" step="10" />
+        </div>
+
+        <button type="submit" class="btn-primary search-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Search
+        </button>
+
+        {% if q or prop_type or max_price %}
+        <a href="/dashboard" class="btn-outline search-reset">Clear</a>
+        {% endif %}
+      </form>
+
+      {% if q or prop_type or max_price %}
+      <p class="results-count">
+        {{ properties|length }} result{{ 's' if properties|length != 1 }} found
+        {% if q %} for "<strong>{{ q }}</strong>"{% endif %}
+        {% if prop_type %} · {{ prop_type|title }}{% endif %}
+        {% if max_price %} · max ${{ max_price }}{% endif %}
+      </p>
+      {% endif %}
     </div>
+
+    <!-- Property grid -->
+    {% if properties %}
+    <div class="prop-grid">
+      {% for p in properties %}
+      <div class="prop-card">
+
+        <!-- Cover photo -->
+        {% if p.cover_image %}
+        <div class="prop-cover">
+          <img src="{{ url_for('static', filename='uploads/properties/' + p.cover_image) }}"
+               alt="{{ p.title }}" class="prop-cover-img" />
+        </div>
+        {% else %}
+        <div class="prop-cover prop-cover--empty">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        {% endif %}
+
+        <!-- Status chip -->
+        <div class="prop-status-bar">
+          <span class="status-badge status-{{ p.status }}">
+            {% if p.status == 'available' %}Needs Tenants
+            {% elif p.status == 'occupied' %}Occupied
+            {% elif p.status == 'partial' %}Partially Occupied
+            {% else %}Maintenance{% endif %}
+          </span>
+          <span class="prop-type-chip">{{ p.property_type|title }}</span>
+        </div>
+
+        <div class="prop-body">
+          <h3 class="prop-title">{{ p.title }}</h3>
+
+          <div class="prop-location">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {{ p.nearby_landmark or p.city or 'Location not specified' }}
+          </div>
+
+          {% if p.description %}
+          <p class="prop-desc">{{ p.description[:110] }}{% if p.description|length > 110 %}…{% endif %}</p>
+          {% endif %}
+
+          <div class="prop-meta-row">
+            <div class="meta-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+              {{ p.total_rooms }} room{{ 's' if p.total_rooms != 1 }}
+            </div>
+            <div class="meta-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M13 6h7a2 2 0 0 1 2 2v3"/><path d="M8 16s1.5-2 4-2 4 2 4 2"/></svg>
+              {{ p.bathrooms }} bath{{ 's' if p.bathrooms != 1 }}
+            </div>
+            <div class="meta-item">
+              {% if p.is_shared %}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Shared
+              {% else %}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Private
+              {% endif %}
+            </div>
+          </div>
+
+          {% if p.services %}
+          <div class="services-row">
+            {% set svc_icons = {'wifi':'📶','water':'💧','electricity':'⚡','parking':'🅿️',
+                                'security':'🔒','laundry':'🫧','kitchen':'🍳','dstv':'📺'} %}
+            {% for svc in p.services[:4] %}
+            <span class="svc-chip">{{ svc_icons.get(svc,'✓') }} {{ svc|title }}</span>
+            {% endfor %}
+            {% if p.services|length > 4 %}
+            <span class="svc-chip svc-more">+{{ p.services|length - 4 }} more</span>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="prop-footer">
+          <div class="prop-price">
+            <span class="price-value">{{ p.currency }} {{ "%.0f"|format(p.price_per_month) }}</span>
+            <span class="price-label">/ month</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
+            <a href="/landlord/property/{{ p.id }}" class="btn-view-prop">
+              View Details
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+            <span class="contact-lock-hint">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Contact: {{ p.currency }} {{ "%.2f"|format(p.price_per_month * 0.05) }} to unlock
+            </span>
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      {% if q or prop_type or max_price %}
+      <h3>No properties match your search</h3>
+      <p>Try adjusting your filters or <a href="/dashboard">clear all</a> to see all listings.</p>
+      {% else %}
+      <h3>No properties listed yet</h3>
+      <p>Check back soon — landlords are adding new accommodation.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
   </main>
+</div>
+
+<script>
+  function clearField(name) {
+    const form = document.getElementById('search-form');
+    const el = form.querySelector(`[name="${name}"]`);
+    if (el) { el.value = ''; form.submit(); }
+  }
+</script>
 
 </body>
 </html>

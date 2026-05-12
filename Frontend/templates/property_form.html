@@ -281,6 +281,21 @@
                    value="{{ prop.country if prop else 'Zimbabwe' }}" />
           </div>
 
+          <div class="field-group field-full">
+            <label class="field-label" for="nearby_landmark">
+              Nearby Landmark
+              <span style="font-weight:400;color:#6b7280;font-size:.8rem">— shown to tenants instead of full address</span>
+            </label>
+            <div class="input-with-icon">
+              <svg class="input-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              <input type="text" id="nearby_landmark" name="nearby_landmark" class="field-input has-left-icon"
+                     placeholder="e.g. Near T-Tech Campus, Near City Centre, Near Avenues Clinic"
+                     value="{{ prop.nearby_landmark if prop and prop.nearby_landmark else '' }}"
+                     maxlength="120" />
+            </div>
+            <span class="field-hint">Tenants see this instead of your exact address. Keep it vague enough to protect your privacy while helping tenants gauge the area.</span>
+          </div>
+
           <!-- Hidden lat/lng -->
           <input type="hidden" id="latitude"  name="latitude"  value="{{ prop.latitude  if prop and prop.latitude  else '' }}" />
           <input type="hidden" id="longitude" name="longitude" value="{{ prop.longitude if prop and prop.longitude else '' }}" />
