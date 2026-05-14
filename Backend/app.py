@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
@@ -11,13 +12,22 @@ import secrets
 import re
 import json
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import wraps
 
 app = Flask(__name__, template_folder='../Frontend/templates', static_folder='../Frontend/static')
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(days=7)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB total upload limit
+
+# ── Email (Flask-Mail) ────────────────────────────────────────────────────────
+app.config['MAIL_SERVER']   = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT']     = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS']  = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = ('T-Tech Connect', os.environ.get('MAIL_USERNAME', ''))
+mail = Mail(app)
 
 GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
@@ -68,6 +78,18 @@ def init_db():
             conn.execute("ALTER TABLE properties ADD COLUMN nearby_landmark TEXT DEFAULT ''")
         if 'student_friendly' not in prop_cols:
             conn.execute("ALTER TABLE properties ADD COLUMN student_friendly INTEGER DEFAULT 0")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                token TEXT NOT NULL UNIQUE,
+                expires_at TIMESTAMP NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
         conn.commit()
 
         conn.executescript("""
@@ -857,14 +879,141 @@ def logout():
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")
 def forgot_password():
     if request.method == 'POST':
-        email = (request.get_json() or request.form).get('email', '').strip().lower()
-        msg = "If that email is registered, a reset link has been sent."
-        if request.is_json: return jsonify({'success': True, 'message': msg})
-        flash(msg, 'info')
-        return redirect(url_for('login'))
+        data  = request.get_json() if request.is_json else request.form
+        email = (data.get('email') or '').strip().lower()
+        # Always return the same message to prevent email enumeration
+        ok_msg = "If that email is registered you'll receive a reset link shortly. Check your inbox (and spam folder)."
+
+        if email and is_valid_email(email):
+            with get_db() as conn:
+                user = conn.execute(
+                    "SELECT id, full_name FROM users WHERE email=? AND is_active=1", (email,)
+                ).fetchone()
+
+            if user:
+                token     = secrets.token_urlsafe(48)
+                expires   = datetime.utcnow() + timedelta(hours=1)
+                with get_db() as conn:
+                    # Invalidate any existing unused tokens for this user
+                    conn.execute(
+                        "UPDATE password_resets SET used=1 WHERE user_id=? AND used=0",
+                        (user['id'],)
+                    )
+                    conn.execute(
+                        "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?,?,?)",
+                        (user['id'], token, expires.isoformat())
+                    )
+                    conn.commit()
+
+                reset_url = url_for('reset_password', token=token, _external=True)
+                _send_reset_email(email, user['full_name'], reset_url)
+
+        if request.is_json:
+            return jsonify({'success': True, 'message': ok_msg})
+        flash(ok_msg, 'info')
+        return redirect(url_for('forgot_password'))
+
     return render_template('forgot_password.html')
+
+
+def _send_reset_email(to_email, name, reset_url):
+    try:
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0;padding:0;background:#f0f4ff;font-family:Inter,system-ui,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+            <div style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);padding:32px;text-align:center">
+              <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">T-Tech Connect</h1>
+              <p style="color:rgba(255,255,255,.8);margin:6px 0 0;font-size:14px">Connecting Tenants with Landlords</p>
+            </div>
+            <div style="padding:36px 32px">
+              <h2 style="color:#111827;font-size:18px;margin:0 0 8px">Hi {name},</h2>
+              <p style="color:#6b7280;line-height:1.6;margin:0 0 24px">
+                We received a request to reset your T-Tech Connect password. Click the button below to choose a new password.
+              </p>
+              <div style="text-align:center;margin:0 0 28px">
+                <a href="{reset_url}"
+                   style="display:inline-block;padding:14px 32px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
+                  Reset My Password
+                </a>
+              </div>
+              <p style="color:#9ca3af;font-size:13px;line-height:1.6;margin:0 0 8px">
+                This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your account remains secure.
+              </p>
+              <p style="color:#9ca3af;font-size:12px;word-break:break-all;margin:0">
+                Or copy this link: {reset_url}
+              </p>
+            </div>
+            <div style="background:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #f3f4f6">
+              <p style="color:#9ca3af;font-size:12px;margin:0">© 2026 T-Tech Connect · This is an automated message, please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+        """
+        msg = Message(
+            subject="Reset your T-Tech Connect password",
+            recipients=[to_email],
+            html=html_body
+        )
+        mail.send(msg)
+    except Exception as e:
+        app.logger.error(f"Password reset email failed: {e}")
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    # Validate token
+    with get_db() as conn:
+        reset = conn.execute(
+            "SELECT * FROM password_resets WHERE token=? AND used=0",
+            (token,)
+        ).fetchone()
+
+    if not reset:
+        flash('This reset link is invalid or has already been used.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    if datetime.utcnow() > datetime.fromisoformat(reset['expires_at']):
+        flash('This reset link has expired. Please request a new one.', 'error')
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        data     = request.get_json() if request.is_json else request.form
+        password = data.get('password') or ''
+        confirm  = data.get('confirm_password') or ''
+
+        def err(msg):
+            if request.is_json:
+                return jsonify({'success': False, 'error': msg}), 400
+            return render_template('reset_password.html', token=token, error=msg)
+
+        if len(password) < 8:
+            return err('Password must be at least 8 characters.')
+        if password != confirm:
+            return err('Passwords do not match.')
+
+        with get_db() as conn:
+            conn.execute(
+                "UPDATE users SET password_hash=? WHERE id=?",
+                (generate_password_hash(password), reset['user_id'])
+            )
+            conn.execute(
+                "UPDATE password_resets SET used=1 WHERE token=?",
+                (token,)
+            )
+            conn.commit()
+
+        if request.is_json:
+            return jsonify({'success': True, 'redirect': url_for('login')})
+        flash('Password updated successfully. You can now sign in.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html', token=token, error=None)
 
 
 # ── Landlord routes ───────────────────────────────────────────────────────────
@@ -1602,6 +1751,7 @@ def admin_payments():
                            total_revenue=total_revenue, **_admin_common())
 
 
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     socketio.run(app, debug=True, port=5000, allow_unsafe_werkzeug=True)
