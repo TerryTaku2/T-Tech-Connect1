@@ -5,11 +5,78 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="T-Tech" />
+<style>
+  #pwa-install-btn {
+    display: none;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .9rem;
+    background: #1d4ed8;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s;
+    white-space: nowrap;
+  }
+  #pwa-install-btn:hover { background: #1e3a8a; }
+  #pwa-install-toast {
+    display: none;
+    position: fixed;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: #fff;
+    padding: .75rem 1.4rem;
+    border-radius: 10px;
+    font-size: .88rem;
+    z-index: 9999;
+    box-shadow: 0 4px 20px rgba(0,0,0,.3);
+    text-align: center;
+    max-width: 90vw;
+  }
+</style>
 <script>
+  let _pwaPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    document.querySelectorAll('#pwa-install-btn').forEach(b => b.style.display = 'flex');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    document.querySelectorAll('#pwa-install-btn').forEach(b => b.style.display = 'none');
+    _pwaPrompt = null;
+  });
+
+  async function triggerPwaInstall() {
+    if (_pwaPrompt) {
+      _pwaPrompt.prompt();
+      const { outcome } = await _pwaPrompt.userChoice;
+      if (outcome === 'accepted') _pwaPrompt = null;
+    } else {
+      /* iOS Safari — show manual instructions */
+      const t = document.getElementById('pwa-install-toast');
+      if (t) {
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 5000);
+      }
+    }
+  }
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
-        .catch(() => {});
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
     });
   }
 </script>
+
+<!-- iOS install hint toast (hidden until needed) -->
+<div id="pwa-install-toast">
+  On iPhone: tap the <strong>Share</strong> button ↑ then <strong>"Add to Home Screen"</strong>
+</div>
