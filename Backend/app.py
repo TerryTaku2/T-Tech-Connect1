@@ -4,6 +4,7 @@ from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from authlib.integrations.flask_client import OAuth
 import sqlite3
 import os
 import secrets
@@ -17,6 +18,18 @@ app = Flask(__name__, template_folder='../Frontend/templates', static_folder='..
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(days=7)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB total upload limit
+
+GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+
+oauth = OAuth(app)
+google_oauth = oauth.register(
+    name='google',
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'},
+)
 
 GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
 ALLOWED_EXT  = {'jpg', 'jpeg', 'png', 'webp'}
@@ -45,6 +58,7 @@ def init_db():
         for col, typedef in [
             ("phone",     "TEXT"),
             ("last_seen", "TIMESTAMP"),
+            ("google_id", "TEXT"),
         ]:
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {typedef}")
@@ -52,6 +66,8 @@ def init_db():
         prop_cols = {r[1] for r in conn.execute("PRAGMA table_info(properties)").fetchall()}
         if 'nearby_landmark' not in prop_cols:
             conn.execute("ALTER TABLE properties ADD COLUMN nearby_landmark TEXT DEFAULT ''")
+        if 'student_friendly' not in prop_cols:
+            conn.execute("ALTER TABLE properties ADD COLUMN student_friendly INTEGER DEFAULT 0")
         conn.commit()
 
         conn.executescript("""
@@ -62,6 +78,7 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 role TEXT DEFAULT 'student',
                 phone TEXT,
+                google_id TEXT,
                 is_active INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP,
@@ -230,6 +247,10 @@ def is_valid_email(email):
     return re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', email)
 
 
+def is_valid_phone(phone):
+    return re.match(r'^\+?[\d\s\-]{7,15}$', phone)
+
+
 def log_attempt(email, ip, success):
     with get_db() as conn:
         conn.execute("INSERT INTO login_attempts (email, ip_address, success) VALUES (?,?,?)",
@@ -352,6 +373,7 @@ def _save_property(pid):
     contact_phone    = f.get('contact_phone', '').strip()
     contact_email    = f.get('contact_email', '').strip()
     nearby_landmark  = f.get('nearby_landmark', '').strip()
+    student_friendly = 1 if f.get('student_friendly') else 0
 
     if not title:   errors['title']   = 'Property title is required.'
     if not price:   errors['price']   = 'Monthly price is required.'
@@ -373,7 +395,7 @@ def _save_property(pid):
         int(total_rooms), int(avail_rooms), int(bathrooms),
         price, currency, address, city, country,
         float(lat) if lat else None, float(lng) if lng else None,
-        services, contact_phone, contact_email, nearby_landmark
+        services, contact_phone, contact_email, nearby_landmark, student_friendly
     )
 
     with get_db() as conn:
@@ -383,8 +405,8 @@ def _save_property(pid):
                     (landlord_id,title,property_type,description,status,is_shared,
                      total_rooms,available_rooms,bathrooms,price_per_month,currency,
                      address,city,country,latitude,longitude,services,contact_phone,contact_email,
-                     nearby_landmark)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     nearby_landmark,student_friendly)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (session['user_id'], *data))
             property_id = cur.lastrowid
             flash('Property listed successfully!', 'success')
@@ -394,7 +416,7 @@ def _save_property(pid):
                     title=?,property_type=?,description=?,status=?,is_shared=?,
                     total_rooms=?,available_rooms=?,bathrooms=?,price_per_month=?,currency=?,
                     address=?,city=?,country=?,latitude=?,longitude=?,
-                    services=?,contact_phone=?,contact_email=?,nearby_landmark=?,
+                    services=?,contact_phone=?,contact_email=?,nearby_landmark=?,student_friendly=?,
                     updated_at=CURRENT_TIMESTAMP
                 WHERE id=? AND landlord_id=?
             """, (*data, pid, session['user_id']))
@@ -428,6 +450,7 @@ def register():
     data      = request.get_json() if request.is_json else request.form
     full_name = (data.get('full_name') or '').strip()
     email     = (data.get('email') or '').strip().lower()
+    phone     = (data.get('phone') or '').strip()
     password  = data.get('password') or ''
     role      = (data.get('role') or '').strip()
 
@@ -438,6 +461,8 @@ def register():
         return err('Full name is required.')
     if not email or not is_valid_email(email):
         return err('A valid email address is required.')
+    if phone and not is_valid_phone(phone):
+        return err('Please enter a valid phone number.')
     if role not in ('student', 'landlord'):
         return err('Please select Tenant or Landlord.')
     if len(password) < 8:
@@ -446,9 +471,11 @@ def register():
     with get_db() as conn:
         if conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
             return err('An account with this email already exists.')
+        if phone and conn.execute("SELECT id FROM users WHERE phone=?", (phone,)).fetchone():
+            return err('An account with this phone number already exists.')
         conn.execute(
-            "INSERT INTO users (full_name, email, password_hash, role) VALUES (?,?,?,?)",
-            (full_name, email, generate_password_hash(password), role)
+            "INSERT INTO users (full_name, email, password_hash, role, phone) VALUES (?,?,?,?,?)",
+            (full_name, email, generate_password_hash(password), role, phone or None)
         )
         conn.commit()
         user_id = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()['id']
@@ -474,35 +501,40 @@ def login():
     if request.method == 'POST':
         if request.is_json:
             data = request.get_json()
-            email, password, remember = (
-                data.get('email','').strip().lower(),
-                data.get('password',''),
-                data.get('remember', False)
-            )
+            identifier = (data.get('email') or data.get('identifier') or '').strip()
+            password   = data.get('password', '')
+            remember   = data.get('remember', False)
         else:
-            email    = request.form.get('email','').strip().lower()
-            password = request.form.get('password','')
-            remember = bool(request.form.get('remember'))
+            identifier = request.form.get('email', '').strip()
+            password   = request.form.get('password', '')
+            remember   = bool(request.form.get('remember'))
 
+        identifier_lower = identifier.lower()
         ip     = get_remote_address()
-        failed = get_failed_attempts(email, ip)
+        failed = get_failed_attempts(identifier_lower, ip)
 
-        if   failed >= 5:              msg = "Too many failed attempts. Wait 15 minutes."
-        elif not email or not password: msg = "Email and password are required."
-        elif not is_valid_email(email): msg = "Please enter a valid email address."
-        else:                           msg = None
+        login_by_phone = '@' not in identifier and is_valid_phone(identifier)
+        if   failed >= 5:                    msg = "Too many failed attempts. Wait 15 minutes."
+        elif not identifier or not password: msg = "Email/phone and password are required."
+        elif not login_by_phone and not is_valid_email(identifier_lower): msg = "Please enter a valid email address or phone number."
+        else:                                msg = None
 
         if msg:
             if request.is_json: return jsonify({'success': False, 'error': msg}), 429 if failed >= 5 else 400
             error = msg
         else:
             with get_db() as conn:
-                user = conn.execute(
-                    "SELECT * FROM users WHERE email=? AND is_active=1", (email,)
-                ).fetchone()
+                if login_by_phone:
+                    user = conn.execute(
+                        "SELECT * FROM users WHERE phone=? AND is_active=1", (identifier,)
+                    ).fetchone()
+                else:
+                    user = conn.execute(
+                        "SELECT * FROM users WHERE email=? AND is_active=1", (identifier_lower,)
+                    ).fetchone()
 
-            if user and check_password_hash(user['password_hash'], password):
-                log_attempt(email, ip, True)
+            if user and user['password_hash'] and check_password_hash(user['password_hash'], password):
+                log_attempt(identifier_lower, ip, True)
                 session.clear()
                 session['user_id']    = user['id']
                 session['user_name']  = user['full_name']
@@ -517,12 +549,101 @@ def login():
                     return jsonify({'success': True, 'redirect': dest, 'role': user['role']})
                 return redirect(dest)
             else:
-                log_attempt(email, ip, False)
-                msg = "Invalid email or password. Please try again."
+                log_attempt(identifier_lower, ip, False)
+                msg = "Invalid credentials. Please try again."
                 if request.is_json: return jsonify({'success': False, 'error': msg}), 401
                 error = msg
 
     return render_template('login.html', error=error)
+
+
+@app.route('/auth/google')
+def auth_google():
+    if not GOOGLE_CLIENT_ID:
+        flash('Google login is not configured yet.', 'error')
+        return redirect(url_for('login'))
+    redirect_uri = url_for('auth_google_callback', _external=True)
+    return google_oauth.authorize_redirect(redirect_uri)
+
+
+@app.route('/auth/google/callback')
+def auth_google_callback():
+    if not GOOGLE_CLIENT_ID:
+        return redirect(url_for('login'))
+    try:
+        token     = google_oauth.authorize_access_token()
+        user_info = token.get('userinfo') or {}
+    except Exception:
+        flash('Google login failed. Please try again.', 'error')
+        return redirect(url_for('login'))
+
+    g_email = (user_info.get('email') or '').lower()
+    g_name  = user_info.get('name') or g_email.split('@')[0]
+    g_id    = user_info.get('sub') or ''
+
+    if not g_email:
+        flash('Could not retrieve your email from Google.', 'error')
+        return redirect(url_for('login'))
+
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE google_id=? OR email=?", (g_id, g_email)
+        ).fetchone()
+
+        if user:
+            if not user['google_id']:
+                conn.execute("UPDATE users SET google_id=? WHERE id=?", (g_id, user['id']))
+                conn.commit()
+            conn.execute("UPDATE users SET last_login=CURRENT_TIMESTAMP, last_seen=CURRENT_TIMESTAMP WHERE id=?", (user['id'],))
+            conn.commit()
+            session.clear()
+            session['user_id']    = user['id']
+            session['user_name']  = user['full_name']
+            session['user_role']  = user['role']
+            session['user_email'] = user['email']
+            return redirect(role_redirect(user['role']))
+
+    # New Google user — store info temporarily and ask for role
+    session['pending_google'] = {'email': g_email, 'name': g_name, 'google_id': g_id}
+    return redirect(url_for('choose_role'))
+
+
+@app.route('/auth/choose-role', methods=['GET', 'POST'])
+def choose_role():
+    pending = session.get('pending_google')
+    if not pending:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        role = request.form.get('role', '').strip()
+        if role not in ('student', 'landlord'):
+            return render_template('choose_role.html', error='Please select your account type.')
+
+        g_email = pending['email']
+        g_name  = pending['name']
+        g_id    = pending['google_id']
+
+        with get_db() as conn:
+            if conn.execute("SELECT id FROM users WHERE email=?", (g_email,)).fetchone():
+                flash('An account with this email already exists. Please sign in instead.', 'error')
+                session.pop('pending_google', None)
+                return redirect(url_for('login'))
+            conn.execute(
+                "INSERT INTO users (full_name, email, password_hash, role, google_id) VALUES (?,?,?,?,?)",
+                (g_name, g_email, '', role, g_id)
+            )
+            conn.commit()
+            user = conn.execute("SELECT * FROM users WHERE email=?", (g_email,)).fetchone()
+
+        session.pop('pending_google', None)
+        session.clear()
+        session['user_id']    = user['id']
+        session['user_name']  = user['full_name']
+        session['user_role']  = user['role']
+        session['user_email'] = user['email']
+        return redirect(role_redirect(role))
+
+    return render_template('choose_role.html', name=pending.get('name', ''), error=None)
 
 
 @app.route('/dashboard')
@@ -533,9 +654,14 @@ def dashboard():
     if session.get('user_role') == 'admin':
         return redirect(url_for('admin_dashboard'))
 
-    q         = request.args.get('q', '').strip()
-    prop_type = request.args.get('type', '').strip()
-    max_price = request.args.get('max_price', '').strip()
+    q               = request.args.get('q', '').strip()
+    prop_type       = request.args.get('type', '').strip()
+    city            = request.args.get('city', '').strip()
+    min_price       = request.args.get('min_price', '').strip()
+    max_price       = request.args.get('max_price', '').strip()
+    shared          = request.args.get('shared', '').strip()
+    student_friendly= request.args.get('student_friendly', '').strip()
+    available_only  = request.args.get('available_only', '').strip()
 
     filters = ["p.is_active=1"]
     params  = []
@@ -544,14 +670,19 @@ def dashboard():
         filters.append("(p.title LIKE ? OR p.nearby_landmark LIKE ? OR p.city LIKE ? OR p.description LIKE ?)")
         params += [like, like, like, like]
     if prop_type:
-        filters.append("p.property_type=?")
-        params.append(prop_type)
+        filters.append("p.property_type=?");  params.append(prop_type)
+    if city:
+        filters.append("p.city=?");           params.append(city)
+    if min_price:
+        try:    filters.append("p.price_per_month>=?"); params.append(float(min_price))
+        except ValueError: pass
     if max_price:
-        try:
-            filters.append("p.price_per_month<=?")
-            params.append(float(max_price))
-        except ValueError:
-            pass
+        try:    filters.append("p.price_per_month<=?"); params.append(float(max_price))
+        except ValueError: pass
+    if shared == '1':   filters.append("p.is_shared=1")
+    elif shared == '0': filters.append("p.is_shared=0")
+    if student_friendly == '1': filters.append("p.student_friendly=1")
+    if available_only   == '1': filters.append("p.status='available'")
 
     where = ' AND '.join(filters)
     with get_db() as conn:
@@ -587,8 +718,93 @@ def dashboard():
                            user_email=session.get('user_email'),
                            properties=prop_list,
                            stats=stats,
-                           q=q, prop_type=prop_type, max_price=max_price,
+                           cities=_get_cities(),
+                           q=q, prop_type=prop_type, city=city,
+                           min_price=min_price, max_price=max_price,
+                           shared=shared, student_friendly=student_friendly,
+                           available_only=available_only,
                            unread_count=unread)
+
+
+def _get_cities():
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT city, COUNT(*) as cnt
+            FROM properties
+            WHERE is_active=1 AND city IS NOT NULL AND city != ''
+            GROUP BY city ORDER BY cnt DESC
+        """).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.route('/browse')
+def browse():
+    q         = request.args.get('q', '').strip()
+    prop_type = request.args.get('type', '').strip()
+    max_price = request.args.get('max_price', '').strip()
+    city      = request.args.get('city', '').strip()
+
+    filters = ["p.is_active=1"]
+    params  = []
+    if q:
+        like = f'%{q}%'
+        filters.append("(p.title LIKE ? OR p.nearby_landmark LIKE ? OR p.city LIKE ? OR p.description LIKE ?)")
+        params += [like, like, like, like]
+    if prop_type:
+        filters.append("p.property_type=?")
+        params.append(prop_type)
+    if max_price:
+        try:
+            filters.append("p.price_per_month<=?")
+            params.append(float(max_price))
+        except ValueError:
+            pass
+    if city:
+        filters.append("p.city=?")
+        params.append(city)
+
+    where = ' AND '.join(filters)
+    with get_db() as conn:
+        stats = conn.execute("""
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN status='available' THEN 1 ELSE 0 END) as available,
+                   SUM(CASE WHEN available_rooms > 0 THEN available_rooms ELSE 0 END) as rooms_available
+            FROM properties WHERE is_active=1
+        """).fetchone()
+
+        props = conn.execute(f"""
+            SELECT p.*, u.full_name as landlord_name
+            FROM properties p JOIN users u ON p.landlord_id=u.id
+            WHERE {where}
+            ORDER BY p.created_at DESC
+        """, params).fetchall()
+
+    prop_list = []
+    for p in props:
+        d = {**dict(p), 'services': json.loads(p['services'] or '[]')}
+        with get_db() as conn:
+            cover = conn.execute(
+                "SELECT filename FROM property_images WHERE property_id=? AND is_primary=1 LIMIT 1",
+                (p['id'],)
+            ).fetchone()
+        d['cover_image'] = cover['filename'] if cover else None
+        prop_list.append(d)
+
+    return render_template('browse.html',
+                           properties=prop_list,
+                           stats=stats,
+                           cities=_get_cities(),
+                           q=q, prop_type=prop_type, max_price=max_price, city=city)
+
+
+@app.route('/for-tenants')
+def for_tenants():
+    return redirect(url_for('browse'))
+
+
+@app.route('/join')
+def join():
+    return redirect('/login#register')
 
 
 @app.route('/logout')

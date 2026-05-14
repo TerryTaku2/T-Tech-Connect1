@@ -1,0 +1,384 @@
+/* ============================================================
+   T-Tech Connect — For Tenants Landing Page
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:      #1d4ed8;
+  --primary-dark: #1e3a8a;
+  --text-primary: #111827;
+  --text-second:  #6b7280;
+  --text-muted:   #9ca3af;
+  --border:       #e5e7eb;
+  --white:        #ffffff;
+  --bg:           #f8faff;
+  --radius:       14px;
+  --radius-sm:    8px;
+  --shadow-sm:    0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:    0 6px 24px rgba(0,0,0,.10);
+}
+
+html, body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--white);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Nav ──────────────────────────────────────────────────── */
+.ft-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .9rem 2.5rem;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.ft-logo {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+.ft-nav-links { display: flex; align-items: center; gap: 1.5rem; }
+.ft-nav-link {
+  font-size: .9rem;
+  color: var(--text-second);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color .2s;
+}
+.ft-nav-link:hover { color: var(--primary); }
+.ft-nav-btn {
+  padding: .5rem 1.1rem;
+  background: var(--primary);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: .88rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background .2s;
+}
+.ft-nav-btn:hover { background: var(--primary-dark); }
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.ft-hero {
+  background: linear-gradient(145deg, #1d4ed8 0%, #1e3a8a 60%, #0f2460 100%);
+  color: #fff;
+  padding: 5rem 2rem 4rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.ft-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 50%, rgba(99,102,241,.3) 0%, transparent 60%);
+  pointer-events: none;
+}
+.ft-hero-inner { max-width: 760px; margin: 0 auto; position: relative; }
+.ft-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 99px;
+  padding: .35rem .9rem;
+  font-size: .8rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(4px);
+}
+.ft-hero-title {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: .9rem;
+  letter-spacing: -.02em;
+}
+.ft-hero-accent {
+  background: linear-gradient(90deg, #93c5fd, #c4b5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.ft-hero-sub {
+  font-size: 1.1rem;
+  opacity: .85;
+  margin-bottom: 2.5rem;
+  line-height: 1.6;
+}
+
+/* Search bar */
+.ft-search-bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: .5rem .5rem .5rem .75rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+}
+.ft-search-input-wrap {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--text-muted);
+}
+.ft-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: .95rem;
+  color: var(--text-primary);
+  background: transparent;
+  padding: .35rem 0;
+}
+.ft-search-input::placeholder { color: var(--text-muted); }
+.ft-search-select {
+  border: none;
+  border-left: 1px solid var(--border);
+  outline: none;
+  font-size: .9rem;
+  color: var(--text-second);
+  background: transparent;
+  padding: .35rem .75rem;
+  cursor: pointer;
+}
+.ft-search-btn {
+  padding: .65rem 1.4rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s;
+}
+.ft-search-btn:hover { background: var(--primary-dark); }
+
+/* Stats */
+.ft-hero-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ft-stat { text-align: center; }
+.ft-stat-val { display: block; font-size: 1.75rem; font-weight: 800; }
+.ft-stat-lbl { font-size: .78rem; opacity: .75; letter-spacing: .03em; text-transform: uppercase; }
+.ft-stat-sep { width: 1px; height: 2.5rem; background: rgba(255,255,255,.2); }
+
+/* ── Section shared ───────────────────────────────────────── */
+.ft-section { padding: 4.5rem 2rem; }
+.ft-section--alt { background: var(--bg); }
+.ft-section-inner { max-width: 1100px; margin: 0 auto; }
+.ft-section-head { text-align: center; margin-bottom: 3rem; }
+.ft-section-title { font-size: 1.9rem; font-weight: 700; margin-bottom: .6rem; letter-spacing: -.01em; }
+.ft-section-sub { font-size: 1rem; color: var(--text-second); }
+
+/* ── City grid ────────────────────────────────────────────── */
+.ft-city-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.ft-city-card {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  padding: 1rem 1.1rem;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all .2s;
+  box-shadow: var(--shadow-sm);
+}
+.ft-city-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 16px rgba(29,78,216,.12);
+  transform: translateY(-2px);
+}
+.ft-city-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.ft-city-icon--all { background: #f0fdf4; color: #16a34a; }
+.ft-city-info { flex: 1; }
+.ft-city-name { display: block; font-weight: 600; font-size: .95rem; }
+.ft-city-count { font-size: .8rem; color: var(--text-second); }
+.ft-city-arrow { color: var(--text-muted); flex-shrink: 0; }
+.ft-city-card--all .ft-city-arrow { color: #16a34a; }
+
+/* ── How it works ─────────────────────────────────────────── */
+.ft-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ft-step {
+  flex: 1;
+  min-width: 200px;
+  max-width: 280px;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  position: relative;
+}
+.ft-step-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: .9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto .9rem;
+}
+.ft-step-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  color: var(--primary);
+}
+.ft-step-title { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; }
+.ft-step-desc  { font-size: .87rem; color: var(--text-second); line-height: 1.55; }
+.ft-step-connector {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), #93c5fd);
+  align-self: center;
+  margin-top: -2rem;
+  flex-shrink: 0;
+}
+
+/* ── Features ─────────────────────────────────────────────── */
+.ft-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+.ft-feature {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.ft-feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  margin-bottom: .9rem;
+}
+.ft-feature h3 { font-size: .95rem; font-weight: 600; margin-bottom: .4rem; }
+.ft-feature p  { font-size: .85rem; color: var(--text-second); line-height: 1.55; }
+
+/* ── CTA section ──────────────────────────────────────────── */
+.ft-cta-section {
+  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+  color: #fff;
+  padding: 5rem 2rem;
+  text-align: center;
+}
+.ft-cta-inner { max-width: 600px; margin: 0 auto; }
+.ft-cta-inner h2 { font-size: 2rem; font-weight: 700; margin-bottom: .75rem; }
+.ft-cta-inner p  { font-size: 1rem; opacity: .85; margin-bottom: 2rem; }
+.ft-cta-btns { display: flex; justify-content: center; gap: .9rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.ft-cta-primary {
+  padding: .8rem 2rem;
+  background: #fff;
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: .95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity .2s;
+}
+.ft-cta-primary:hover { opacity: .9; }
+.ft-cta-secondary {
+  padding: .8rem 2rem;
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,.5);
+  border-radius: var(--radius-sm);
+  font-size: .95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color .2s;
+}
+.ft-cta-secondary:hover { border-color: #fff; }
+.ft-cta-note { font-size: .82rem; opacity: .65; }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.ft-footer {
+  background: #0f172a;
+  color: rgba(255,255,255,.5);
+  padding: 1.5rem 2.5rem;
+}
+.ft-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+  font-size: .83rem;
+}
+.ft-footer-links { display: flex; gap: 1.5rem; }
+.ft-footer-links a { color: rgba(255,255,255,.5); text-decoration: none; }
+.ft-footer-links a:hover { color: #fff; }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .ft-nav { padding: .75rem 1rem; }
+  .ft-nav-links .ft-nav-link { display: none; }
+  .ft-hero { padding: 3rem 1rem 2.5rem; }
+  .ft-hero-title { font-size: 2rem; }
+  .ft-search-bar { flex-direction: column; align-items: stretch; }
+  .ft-search-select { border-left: none; border-top: 1px solid var(--border); }
+  .ft-search-btn { width: 100%; text-align: center; padding: .75rem; }
+  .ft-step-connector { display: none; }
+  .ft-steps { flex-direction: column; align-items: center; }
+}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T-Tech Connect | Student Dashboard</title>
+  <title>T-Tech Connect | Find a Home</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/landlord.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -33,7 +33,7 @@
       <div class="student-banner-content">
         <div class="student-banner-text">
           <h1 class="student-banner-title">Welcome back, {{ user_name.split()[0] }}!</h1>
-          <p class="student-banner-sub">Browse available student accommodation and contact landlords directly.</p>
+          <p class="student-banner-sub">Browse available properties and contact landlords directly.</p>
         </div>
         <a href="/messages" class="student-banner-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -88,52 +88,102 @@
       </div>
     </div>
 
-    <!-- Search & filters -->
+    <!-- ── Filters ───────────────────────────────────────────── -->
     <div class="search-card">
-      <form method="GET" action="/dashboard" class="search-form" id="search-form">
-        <div class="search-input-wrap">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" name="q" value="{{ q }}" class="search-input"
-                 placeholder="Search by name or area…" autocomplete="off" />
-          {% if q %}
-          <button type="button" class="search-clear" onclick="clearField('q')">×</button>
+      <form method="GET" action="/dashboard" id="search-form">
+
+        <!-- Row 1: main search bar -->
+        <div class="search-form">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" name="q" value="{{ q }}" class="search-input"
+                   placeholder="Search by name, area or description…" autocomplete="off" />
+            {% if q %}
+            <button type="button" class="search-clear" onclick="clearField('q')">×</button>
+            {% endif %}
+          </div>
+
+          <div class="select-wrap filter-select">
+            <select name="type" class="field-input" onchange="this.form.submit()">
+              <option value="">All Types</option>
+              {% for val, label in [('apartment','Apartment'),('house','House'),('room','Single Room'),
+                                    ('cottage','Cottage'),('flat','Flat'),('studio','Studio'),('hostel','Hostel')] %}
+              <option value="{{ val }}" {{ 'selected' if prop_type == val }}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <span class="select-arrow">▾</span>
+          </div>
+
+          <div class="select-wrap filter-select">
+            <select name="city" class="field-input" onchange="this.form.submit()">
+              <option value="">All Cities</option>
+              {% for c in cities %}
+              <option value="{{ c.city }}" {{ 'selected' if city == c.city }}>{{ c.city }} ({{ c.cnt }})</option>
+              {% endfor %}
+            </select>
+            <span class="select-arrow">▾</span>
+          </div>
+
+          <div class="price-filter-wrap">
+            <span class="price-filter-label">$</span>
+            <input type="number" name="min_price" value="{{ min_price }}"
+                   class="field-input price-filter-input" placeholder="Min" min="0" step="10" style="width:70px" />
+            <span class="price-filter-label">–</span>
+            <input type="number" name="max_price" value="{{ max_price }}"
+                   class="field-input price-filter-input" placeholder="Max" min="0" step="10" style="width:70px" />
+          </div>
+
+          <button type="submit" class="btn-primary search-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Search
+          </button>
+
+          {% if q or prop_type or city or min_price or max_price or shared or student_friendly or available_only %}
+          <a href="/dashboard" class="btn-outline search-reset">Clear all</a>
           {% endif %}
         </div>
 
-        <div class="select-wrap filter-select">
-          <select name="type" class="field-input" onchange="this.form.submit()">
-            <option value="">All Types</option>
-            {% set types = [('apartment','Apartment'),('house','House'),('room','Single Room'),
-                            ('cottage','Cottage'),('flat','Flat'),('studio','Studio'),('hostel','Hostel')] %}
-            {% for val, label in types %}
-            <option value="{{ val }}" {{ 'selected' if prop_type == val }}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          <span class="select-arrow">▾</span>
+        <!-- Row 2: toggle chips -->
+        <div class="filter-chips-row">
+          {% set base = '/dashboard?q=' ~ q ~ '&type=' ~ prop_type ~ '&city=' ~ city ~ '&min_price=' ~ min_price ~ '&max_price=' ~ max_price %}
+
+          <a href="{{ base }}&available_only={{ '0' if available_only == '1' else '1' }}&shared={{ shared }}&student_friendly={{ student_friendly }}"
+             class="filter-chip {% if available_only == '1' %}filter-chip--on{% endif %}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Available Now
+          </a>
+
+          <a href="{{ base }}&available_only={{ available_only }}&shared={{ shared }}&student_friendly={{ '0' if student_friendly == '1' else '1' }}"
+             class="filter-chip {% if student_friendly == '1' %}filter-chip--on{% endif %}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/></svg>
+            Student-Friendly
+          </a>
+
+          <a href="{{ base }}&available_only={{ available_only }}&shared={{ '0' if shared == '1' else '1' }}&student_friendly={{ student_friendly }}"
+             class="filter-chip {% if shared == '1' %}filter-chip--on{% endif %}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+            Shared
+          </a>
+
+          <a href="{{ base }}&available_only={{ available_only }}&shared={{ '' if shared == '0' else '0' }}&student_friendly={{ student_friendly }}"
+             class="filter-chip {% if shared == '0' %}filter-chip--on{% endif %}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Private
+          </a>
         </div>
 
-        <div class="price-filter-wrap">
-          <span class="price-filter-label">Max $</span>
-          <input type="number" name="max_price" value="{{ max_price }}"
-                 class="field-input price-filter-input" placeholder="Any" min="0" step="10" />
-        </div>
-
-        <button type="submit" class="btn-primary search-btn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Search
-        </button>
-
-        {% if q or prop_type or max_price %}
-        <a href="/dashboard" class="btn-outline search-reset">Clear</a>
-        {% endif %}
       </form>
 
-      {% if q or prop_type or max_price %}
+      {% set any_filter = q or prop_type or city or min_price or max_price or shared or student_friendly or available_only %}
+      {% if any_filter %}
       <p class="results-count">
         {{ properties|length }} result{{ 's' if properties|length != 1 }} found
+        {% if city %} in <strong>{{ city }}</strong>{% endif %}
         {% if q %} for "<strong>{{ q }}</strong>"{% endif %}
         {% if prop_type %} · {{ prop_type|title }}{% endif %}
-        {% if max_price %} · max ${{ max_price }}{% endif %}
+        {% if min_price or max_price %}
+          · ${{ min_price or '0' }}–{% if max_price %}${{ max_price }}{% else %}any{% endif %}
+        {% endif %}
       </p>
       {% endif %}
     </div>
@@ -144,7 +194,6 @@
       {% for p in properties %}
       <div class="prop-card">
 
-        <!-- Cover photo -->
         {% if p.cover_image %}
         <div class="prop-cover">
           <img src="{{ url_for('static', filename='uploads/properties/' + p.cover_image) }}"
@@ -156,15 +205,17 @@
         </div>
         {% endif %}
 
-        <!-- Status chip -->
         <div class="prop-status-bar">
           <span class="status-badge status-{{ p.status }}">
-            {% if p.status == 'available' %}Needs Tenants
+            {% if p.status == 'available' %}Available
             {% elif p.status == 'occupied' %}Occupied
             {% elif p.status == 'partial' %}Partially Occupied
             {% else %}Maintenance{% endif %}
           </span>
           <span class="prop-type-chip">{{ p.property_type|title }}</span>
+          {% if p.student_friendly %}
+          <span class="prop-type-chip" style="background:#fef9c3;color:#854d0e">🎓 Student-Friendly</span>
+          {% endif %}
         </div>
 
         <div class="prop-body">
@@ -239,9 +290,9 @@
       <div class="empty-icon">
         <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
-      {% if q or prop_type or max_price %}
-      <h3>No properties match your search</h3>
-      <p>Try adjusting your filters or <a href="/dashboard">clear all</a> to see all listings.</p>
+      {% if q or prop_type or city or min_price or max_price or shared or student_friendly or available_only %}
+      <h3>No properties match your filters</h3>
+      <p>Try adjusting your search or <a href="/dashboard">clear all filters</a> to see all listings.</p>
       {% else %}
       <h3>No properties listed yet</h3>
       <p>Check back soon — landlords are adding new accommodation.</p>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browse Properties | T-Tech Connect</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/browse.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ── Top nav ────────────────────────────────────────────── -->
+<nav class="browse-nav">
+  <a href="/browse" class="browse-logo">
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+      <rect width="40" height="40" rx="10" fill="#1d4ed8"/>
+      <path d="M8 14h24M8 20h16M8 26h20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="30" cy="26" r="5" fill="white" fill-opacity="0.9"/>
+      <path d="M28 26l1.5 1.5L32 24" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    T-Tech Connect
+  </a>
+  <div class="browse-nav-actions">
+    <a href="/login" class="nav-btn nav-btn-outline">Sign In</a>
+    <a href="/login#register" class="nav-btn nav-btn-solid">Create Account</a>
+  </div>
+</nav>
+
+<!-- ── Hero ───────────────────────────────────────────────── -->
+<div class="browse-hero">
+  <div class="browse-hero-inner">
+    <h1 class="browse-hero-title">Find Your Perfect Student Accommodation</h1>
+    <p class="browse-hero-sub">Browse {{ stats.total or 0 }} listed properties near T-Tech campus. Sign up free to contact landlords.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-val">{{ stats.total or 0 }}</span>
+        <span class="hero-stat-lbl">Total Listings</span>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <span class="hero-stat-val">{{ stats.available or 0 }}</span>
+        <span class="hero-stat-lbl">Available Now</span>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <span class="hero-stat-val">{{ stats.rooms_available or 0 }}</span>
+        <span class="hero-stat-lbl">Open Rooms</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main content ───────────────────────────────────────── -->
+<div class="browse-body">
+
+  <!-- City quick-filter chips -->
+  {% if cities %}
+  <div class="city-chips-row">
+    <a href="/browse{% if q or prop_type or max_price %}?q={{ q }}&type={{ prop_type }}&max_price={{ max_price }}{% endif %}"
+       class="city-chip {% if not city %}city-chip--active{% endif %}">All Cities</a>
+    {% for c in cities %}
+    <a href="/browse?city={{ c.city|urlencode }}{% if q %}&q={{ q }}{% endif %}{% if prop_type %}&type={{ prop_type }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}"
+       class="city-chip {% if city == c.city %}city-chip--active{% endif %}">
+      {{ c.city }}
+      <span class="city-chip-count">{{ c.cnt }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Search & filters -->
+  <div class="browse-search-card">
+    <form method="GET" action="/browse" class="browse-search-form" id="search-form">
+      {% if city %}<input type="hidden" name="city" value="{{ city }}" />{% endif %}
+      <div class="bsearch-wrap">
+        <svg class="bsearch-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" name="q" value="{{ q }}" class="bsearch-input" placeholder="Search by name or area…" autocomplete="off" />
+        {% if q %}
+        <button type="button" class="bsearch-clear" onclick="clearQ()">×</button>
+        {% endif %}
+      </div>
+
+      <div class="bselect-wrap">
+        <select name="type" class="bselect" onchange="this.form.submit()">
+          <option value="">All Types</option>
+          {% for val, label in [('apartment','Apartment'),('house','House'),('room','Single Room'),
+                                ('cottage','Cottage'),('flat','Flat'),('studio','Studio'),('hostel','Hostel')] %}
+          <option value="{{ val }}" {{ 'selected' if prop_type == val }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <span class="bselect-arrow">▾</span>
+      </div>
+
+      <div class="bprice-wrap">
+        <span class="bprice-label">Max $</span>
+        <input type="number" name="max_price" value="{{ max_price }}" class="bprice-input" placeholder="Any" min="0" step="10" />
+      </div>
+
+      <button type="submit" class="bbtn-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search
+      </button>
+
+      {% if q or prop_type or max_price %}
+      <a href="/browse{% if city %}?city={{ city }}{% endif %}" class="bbtn-clear">Clear</a>
+      {% endif %}
+    </form>
+
+    {% if q or prop_type or max_price or city %}
+    <p class="browse-results-count">
+      {{ properties|length }} result{{ 's' if properties|length != 1 }} found
+      {% if city %} in <strong>{{ city }}</strong>{% endif %}
+      {% if q %} for "<strong>{{ q }}</strong>"{% endif %}
+      {% if prop_type %} · {{ prop_type|title }}{% endif %}
+      {% if max_price %} · max ${{ max_price }}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- Property grid -->
+  {% if properties %}
+  <div class="browse-grid">
+    {% for p in properties %}
+    <div class="bprop-card">
+
+      <!-- Cover image -->
+      {% if p.cover_image %}
+      <div class="bprop-cover">
+        <img src="{{ url_for('static', filename='uploads/properties/' + p.cover_image) }}"
+             alt="{{ p.title }}" class="bprop-cover-img" />
+      </div>
+      {% else %}
+      <div class="bprop-cover bprop-cover--empty">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      {% endif %}
+
+      <!-- Status + type -->
+      <div class="bprop-status-bar">
+        <span class="bstatus-badge bstatus-{{ p.status }}">
+          {% if p.status == 'available' %}Needs Tenants
+          {% elif p.status == 'occupied' %}Occupied
+          {% elif p.status == 'partial' %}Partially Occupied
+          {% else %}Maintenance{% endif %}
+        </span>
+        <span class="btype-chip">{{ p.property_type|title }}</span>
+      </div>
+
+      <div class="bprop-body">
+        <h3 class="bprop-title">{{ p.title }}</h3>
+
+        <div class="bprop-location">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          {{ p.nearby_landmark or p.city or 'Location not specified' }}
+        </div>
+
+        {% if p.description %}
+        <p class="bprop-desc">{{ p.description[:110] }}{% if p.description|length > 110 %}…{% endif %}</p>
+        {% endif %}
+
+        <div class="bprop-meta-row">
+          <div class="bmeta-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>
+            {{ p.total_rooms }} room{{ 's' if p.total_rooms != 1 }}
+          </div>
+          <div class="bmeta-item">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/><path d="M13 6h7a2 2 0 0 1 2 2v3"/><path d="M8 16s1.5-2 4-2 4 2 4 2"/></svg>
+            {{ p.bathrooms }} bath{{ 's' if p.bathrooms != 1 }}
+          </div>
+          <div class="bmeta-item">
+            {% if p.is_shared %}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Shared
+            {% else %}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Private
+            {% endif %}
+          </div>
+        </div>
+
+        {% if p.services %}
+        <div class="bservices-row">
+          {% set svc_icons = {'wifi':'📶','water':'💧','electricity':'⚡','parking':'🅿️',
+                              'security':'🔒','laundry':'🫧','kitchen':'🍳','dstv':'📺'} %}
+          {% for svc in p.services[:4] %}
+          <span class="bsvc-chip">{{ svc_icons.get(svc,'✓') }} {{ svc|title }}</span>
+          {% endfor %}
+          {% if p.services|length > 4 %}
+          <span class="bsvc-chip bsvc-more">+{{ p.services|length - 4 }} more</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="bprop-footer">
+        <div class="bprop-price">
+          <span class="bprice-val">{{ p.currency }} {{ "%.0f"|format(p.price_per_month) }}</span>
+          <span class="bprice-lbl">/ month</span>
+        </div>
+        <a href="/login#register" class="bbtn-contact">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Sign up to contact
+        </a>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="browse-empty">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    {% if q or prop_type or max_price %}
+    <h3>No properties match your search</h3>
+    <p>Try adjusting your filters or <a href="/browse">clear all</a> to see all listings.</p>
+    {% else %}
+    <h3>No properties listed yet</h3>
+    <p>Check back soon — landlords are adding new accommodation.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- CTA banner -->
+  <div class="browse-cta">
+    <div class="browse-cta-inner">
+      <div class="browse-cta-text">
+        <h2>Ready to find your room?</h2>
+        <p>Create a free account to contact landlords, save favourites, and get notified of new listings.</p>
+      </div>
+      <div class="browse-cta-actions">
+        <a href="/login#register" class="cta-btn-solid">Create Free Account</a>
+        <a href="/login" class="cta-btn-outline">Sign In</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────── -->
+<footer class="browse-footer">
+  © 2026 T-Tech Connect · <a href="/login">Sign In</a> · <a href="/login#register">Register</a>
+</footer>
+
+<script>
+  function clearQ() {
+    const f = document.getElementById('search-form');
+    f.querySelector('[name="q"]').value = '';
+    f.submit();
+  }
+</script>
+
+</body>
+</html>

@@ -64,7 +64,7 @@
           <div class="section-num">1</div>
           <div>
             <h2 class="section-title">Basic Information</h2>
-            <p class="section-sub">Tell students what your property is about.</p>
+            <p class="section-sub">Tell tenants what your property is about.</p>
           </div>
         </div>
 
@@ -137,6 +137,19 @@
           <label class="switch">
             <input type="checkbox" id="is_shared" name="is_shared" value="1"
                    {{ 'checked' if prop and prop.is_shared }} />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+
+        <!-- Student-friendly toggle -->
+        <div class="toggle-card">
+          <div class="toggle-info">
+            <h4 class="toggle-title">Student-Friendly</h4>
+            <p class="toggle-sub">Tag this property as suitable for students — it will appear in student-friendly searches.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="student_friendly" name="student_friendly" value="1"
+                   {{ 'checked' if prop and prop.student_friendly }} />
             <span class="switch-track"></span>
           </label>
         </div>

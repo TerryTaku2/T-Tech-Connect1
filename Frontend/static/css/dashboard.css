@@ -135,6 +135,33 @@
   display: flex; align-items: center; gap: .4rem;
 }
 .search-reset { flex-shrink: 0; }
+
+/* Filter chips */
+.filter-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px solid #f1f5f9;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .32rem .8rem;
+  border-radius: 99px;
+  font-size: .8rem;
+  font-weight: 500;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--white);
+  text-decoration: none;
+  transition: all .18s;
+}
+.filter-chip:hover { border-color: var(--primary); color: var(--primary); }
+.filter-chip--on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
 .results-count {
   font-size: .83rem;
   color: var(--text-secondary);

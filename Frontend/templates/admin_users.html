@@ -35,7 +35,7 @@
         <div class="select-wrap" style="width:150px">
           <select name="role" class="field-input" onchange="this.form.submit()">
             <option value="">All Roles</option>
-            <option value="student"  {{ 'selected' if role_filter == 'student' }}>Students</option>
+            <option value="student"  {{ 'selected' if role_filter == 'student' }}>Tenants</option>
             <option value="landlord" {{ 'selected' if role_filter == 'landlord' }}>Landlords</option>
             <option value="admin"    {{ 'selected' if role_filter == 'admin' }}>Admins</option>
           </select>
@@ -73,7 +73,7 @@
             </td>
             <td>
               <select class="role-select" data-uid="{{ u.id }}" onchange="setRole(this)">
-                <option value="student"  {{ 'selected' if u.role == 'student' }}>Student</option>
+                <option value="student"  {{ 'selected' if u.role == 'student' }}>Tenant</option>
                 <option value="landlord" {{ 'selected' if u.role == 'landlord' }}>Landlord</option>
                 <option value="admin"    {{ 'selected' if u.role == 'admin' }}>Admin</option>
               </select>

@@ -467,6 +467,56 @@ html, body {
   color: #fff;
 }
 
+/* ── Google button ───────────────────────────────────────── */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  width: 100%;
+  padding: .75rem 1rem;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--transition);
+  margin-bottom: .25rem;
+}
+.btn-google:hover {
+  background: #f8faff;
+  border-color: #a0b4f0;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Auth divider ────────────────────────────────────────── */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: .9rem 0;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Optional field label ────────────────────────────────── */
+.field-optional {
+  font-size: .78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-left: .2rem;
+}
+
 /* ── Switch hint ─────────────────────────────────────────── */
 .switch-hint {
   margin-top: 1.25rem;

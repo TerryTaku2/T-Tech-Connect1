@@ -20,7 +20,8 @@
       <div class="user-avatar">{{ user_name[0].upper() if user_name else 'L' }}</div>
       <div class="user-info">
         <span class="user-name-text">{{ user_name }}</span>
-        <span class="role-badge role-{{ user_role }}">{{ user_role|title }}</span>
+        {% set role_label = {'student': 'Tenant', 'landlord': 'Landlord', 'admin': 'Admin'} %}
+        <span class="role-badge role-{{ user_role }}">{{ role_label.get(user_role, user_role|title) }}</span>
       </div>
     </div>
     <a href="/logout" class="btn-logout" title="Logout">

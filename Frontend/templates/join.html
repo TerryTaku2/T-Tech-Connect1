@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Tenant Account | T-Tech Connect</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/for_tenants.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div class="bg-decoration">
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+  </div>
+
+  <div class="login-container">
+
+    <!-- Left panel -->
+    <div class="brand-panel">
+      <div class="brand-content">
+        <div class="logo-wrap">
+          <div class="logo-icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect width="40" height="40" rx="12" fill="white" fill-opacity="0.2"/>
+              <path d="M8 14h24M8 20h16M8 26h20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="30" cy="26" r="5" fill="white" fill-opacity="0.9"/>
+              <path d="M28 26l1.5 1.5L32 24" stroke="#1e40af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="logo-text">T-Tech Connect</span>
+        </div>
+        <h1 class="brand-headline">Find Your Home,<br/>Anywhere.</h1>
+        <p class="brand-sub">Browse verified rental properties across multiple cities. No student ID required — open to everyone.</p>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <span>Properties in multiple cities</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <span>Message landlords directly</span>
+          </div>
+          <div class="feature-item">
+            <div class="feature-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span>Free to create an account</span>
+          </div>
+        </div>
+      </div>
+      <div class="brand-footer">© 2026 T-Tech Connect · All rights reserved</div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="form-panel">
+      <div class="form-container">
+
+        <div class="form-header" style="margin-bottom:1.5rem">
+          <h2 class="form-title">Create Tenant Account</h2>
+          <p class="form-sub">Open to all — no student ID required</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="alert" id="js-alert" style="display:none"></div>
+
+        <!-- Google signup -->
+        <a href="/auth/google" class="btn-google">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+          Continue with Google
+        </a>
+        <div class="auth-divider"><span>or sign up with email</span></div>
+
+        <form id="join-form" novalidate>
+
+          <div class="field-group">
+            <label class="field-label" for="j-name">Full name</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </span>
+              <input type="text" id="j-name" class="field-input" placeholder="John Doe" value="{{ full_name }}" autocomplete="name" />
+            </div>
+            <span class="field-error" id="j-name-error"></span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="j-email">Email address</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </span>
+              <input type="email" id="j-email" class="field-input" placeholder="you@example.com" value="{{ email }}" autocomplete="email" spellcheck="false" />
+            </div>
+            <span class="field-error" id="j-email-error"></span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="j-phone">Phone number <span class="field-optional">(optional)</span></label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.59 12 19.79 19.79 0 0 1 1.5 3.4 2 2 0 0 1 3.48 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.12 6.12l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              </span>
+              <input type="tel" id="j-phone" class="field-input" placeholder="+263 77 123 4567" value="{{ phone }}" autocomplete="tel" />
+            </div>
+            <span class="field-error" id="j-phone-error"></span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="j-password">Password</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input type="password" id="j-password" class="field-input" placeholder="Min. 8 characters" autocomplete="new-password" />
+              <button type="button" class="toggle-pwd" id="toggle-j-pwd" aria-label="Show password">
+                <svg id="j-eye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="j-eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+            <span class="field-error" id="j-password-error"></span>
+          </div>
+          <div class="strength-wrap" id="j-strength-wrap" style="display:none">
+            <div class="strength-bar"><div class="strength-fill" id="j-strength-fill"></div></div>
+            <span class="strength-label" id="j-strength-label"></span>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label" for="j-confirm">Confirm password</label>
+            <div class="input-wrap">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <input type="password" id="j-confirm" class="field-input" placeholder="Repeat your password" autocomplete="new-password" />
+            </div>
+            <span class="field-error" id="j-confirm-error"></span>
+          </div>
+
+          <button type="submit" class="btn-submit" id="btn-join">
+            <span class="btn-text">Create Account</span>
+            <span class="btn-spinner" style="display:none">
+              <svg class="spinner-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              Creating account…
+            </span>
+          </button>
+        </form>
+
+        <p class="switch-hint">Already have an account? <a href="/login" class="switch-link">Sign in</a></p>
+        <p class="switch-hint" style="margin-top:.4rem">
+          <a href="/browse" class="switch-link" style="display:inline-flex;align-items:center;gap:.3rem">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            Browse without signing up
+          </a>
+        </p>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    'use strict';
+    function isValidEmail(v) { return /^[\w.\-+]+@[\w.\-]+\.\w{2,}$/.test(v.trim()); }
+    function isValidPhone(v) { return /^\+?[\d\s\-]{7,15}$/.test(v.trim()); }
+    function strengthScore(v) {
+      let s = 0;
+      if (v.length >= 8) s++; if (v.length >= 12) s++;
+      if (/[A-Z]/.test(v)) s++; if (/[0-9]/.test(v)) s++;
+      if (/[^A-Za-z0-9]/.test(v)) s++;
+      return s;
+    }
+    function setErr(id, msg) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = msg || '';
+      const inp = el && el.previousElementSibling && el.previousElementSibling.querySelector('input');
+      if (inp) inp.classList.toggle('is-invalid', !!msg);
+    }
+    function showAlert(msg) {
+      const el = document.getElementById('js-alert');
+      el.className = 'alert alert-error';
+      el.textContent = msg;
+      el.style.display = '';
+    }
+
+    const pwd = document.getElementById('j-password');
+    document.getElementById('toggle-j-pwd').addEventListener('click', () => {
+      const show = pwd.type === 'text';
+      pwd.type = show ? 'password' : 'text';
+      document.getElementById('j-eye').style.display     = show ? '' : 'none';
+      document.getElementById('j-eye-off').style.display = show ? 'none' : '';
+    });
+
+    pwd.addEventListener('input', () => {
+      const score = pwd.value ? strengthScore(pwd.value) : 0;
+      const wrap  = document.getElementById('j-strength-wrap');
+      const fill  = document.getElementById('j-strength-fill');
+      const lbl   = document.getElementById('j-strength-label');
+      if (!score) { wrap.style.display = 'none'; return; }
+      wrap.style.display = 'flex';
+      const levels = [
+        { pct:'20%', color:'#dc2626', label:'Very weak' },
+        { pct:'40%', color:'#ea580c', label:'Weak' },
+        { pct:'60%', color:'#ca8a04', label:'Fair' },
+        { pct:'80%', color:'#16a34a', label:'Strong' },
+        { pct:'100%',color:'#15803d', label:'Very strong' },
+      ];
+      const l = levels[Math.min(score - 1, 4)];
+      fill.style.width = l.pct; fill.style.background = l.color;
+      lbl.textContent = l.label; lbl.style.color = l.color;
+    });
+
+    document.getElementById('join-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      document.getElementById('js-alert').style.display = 'none';
+      ['j-name-error','j-email-error','j-phone-error','j-password-error','j-confirm-error'].forEach(id => setErr(id, ''));
+
+      const name    = document.getElementById('j-name').value.trim();
+      const email   = document.getElementById('j-email').value.trim().toLowerCase();
+      const phone   = document.getElementById('j-phone').value.trim();
+      const password= pwd.value;
+      const confirm = document.getElementById('j-confirm').value;
+      let ok = true;
+
+      if (!name)   { setErr('j-name-error', 'Full name is required.'); ok = false; }
+      if (!email)  { setErr('j-email-error', 'Email is required.'); ok = false; }
+      else if (!isValidEmail(email)) { setErr('j-email-error', 'Please enter a valid email address.'); ok = false; }
+      if (phone && !isValidPhone(phone)) { setErr('j-phone-error', 'Please enter a valid phone number.'); ok = false; }
+      if (!password || password.length < 8) { setErr('j-password-error', 'Password must be at least 8 characters.'); ok = false; }
+      if (password !== confirm) { setErr('j-confirm-error', 'Passwords do not match.'); ok = false; }
+      if (!ok) return;
+
+      const btn  = document.getElementById('btn-join');
+      const txt  = btn.querySelector('.btn-text');
+      const spin = btn.querySelector('.btn-spinner');
+      btn.disabled = true; txt.style.display = 'none'; spin.style.display = '';
+
+      try {
+        const res  = await fetch('/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ full_name: name, email, phone, password }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Redirecting…';
+          btn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+          setTimeout(() => { window.location.href = data.redirect || '/dashboard'; }, 700);
+        } else {
+          showAlert(data.error || 'Registration failed. Please try again.');
+          btn.disabled = false; txt.style.display = ''; spin.style.display = 'none';
+        }
+      } catch {
+        showAlert('Network error. Please check your connection.');
+        btn.disabled = false; txt.style.display = ''; spin.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -20,6 +20,8 @@ function escapeHtml(str) {
     ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 function isValidEmail(v) { return /^[\w.\-+]+@[\w.\-]+\.\w{2,}$/.test(v.trim()); }
+function isValidPhone(v) { return /^\+?[\d\s\-]{7,15}$/.test(v.trim()); }
+function isEmailOrPhone(v) { return v.includes('@') ? isValidEmail(v) : isValidPhone(v); }
 
 function showAlert(msg, type = 'error') {
   const el = document.getElementById('js-alert');
@@ -93,7 +95,7 @@ document.getElementById('toggle-pwd').addEventListener('click', () => {
 
 emailInput.addEventListener('blur',  () => {
   const v = emailInput.value.trim();
-  setFieldError(emailInput, 'email-error', v && !isValidEmail(v) ? 'Please enter a valid email address.' : '');
+  setFieldError(emailInput, 'email-error', v && !isEmailOrPhone(v) ? 'Please enter a valid email address or phone number.' : '');
 });
 emailInput.addEventListener('input', () => setFieldError(emailInput, 'email-error', ''));
 pwdInput.addEventListener('blur',    () => setFieldError(pwdInput, 'password-error', !pwdInput.value ? 'Password is required.' : ''));
@@ -113,8 +115,8 @@ loginForm.addEventListener('submit', async (e) => {
   const remember = rememberChk.checked;
   let ok = true;
 
-  if (!email) { setFieldError(emailInput, 'email-error', 'Email address is required.'); ok = false; }
-  else if (!isValidEmail(email)) { setFieldError(emailInput, 'email-error', 'Please enter a valid email address.'); ok = false; }
+  if (!email) { setFieldError(emailInput, 'email-error', 'Email or phone number is required.'); ok = false; }
+  else if (!isEmailOrPhone(email)) { setFieldError(emailInput, 'email-error', 'Please enter a valid email address or phone number.'); ok = false; }
   if (!password) { setFieldError(pwdInput, 'password-error', 'Password is required.'); ok = false; }
   if (!ok) return;
 
@@ -163,6 +165,7 @@ function _nativeLogin(email, password, remember) {
 const regForm    = document.getElementById('register-form');
 const regName    = document.getElementById('reg-name');
 const regEmail   = document.getElementById('reg-email');
+const regPhone   = document.getElementById('reg-phone');
 const regPwd     = document.getElementById('reg-password');
 const regConfirm = document.getElementById('reg-confirm');
 const regBtn     = document.getElementById('btn-register');
@@ -195,6 +198,7 @@ regForm.addEventListener('submit', async (e) => {
 
   const name     = regName.value.trim();
   const email    = regEmail.value.trim().toLowerCase();
+  const phone    = regPhone ? regPhone.value.trim() : '';
   const role     = document.querySelector('input[name="reg-role"]:checked')?.value || '';
   const password = regPwd.value;
   const confirm  = regConfirm.value;
@@ -204,10 +208,12 @@ regForm.addEventListener('submit', async (e) => {
   setFieldError(regEmail,   'reg-email-error',    '');
   setFieldError(regPwd,     'reg-password-error', '');
   setFieldError(regConfirm, 'reg-confirm-error',  '');
+  setFieldError(regPhone,   'reg-phone-error',    '');
 
   if (!name) { setFieldError(regName, 'reg-name-error', 'Full name is required.'); ok = false; }
   if (!email) { setFieldError(regEmail, 'reg-email-error', 'Email address is required.'); ok = false; }
   else if (!isValidEmail(email)) { setFieldError(regEmail, 'reg-email-error', 'Please enter a valid email address.'); ok = false; }
+  if (phone && !isValidPhone(phone)) { setFieldError(regPhone, 'reg-phone-error', 'Please enter a valid phone number.'); ok = false; }
   if (!role) { setFieldError(null, 'reg-role-error', 'Please select your account type.'); ok = false; }
   if (!password || password.length < 8) { setFieldError(regPwd, 'reg-password-error', 'Password must be at least 8 characters.'); ok = false; }
   if (password !== confirm) { setFieldError(regConfirm, 'reg-confirm-error', 'Passwords do not match.'); ok = false; }
@@ -221,7 +227,7 @@ regForm.addEventListener('submit', async (e) => {
     const res  = await fetch('/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name: name, email, password, role }),
+      body: JSON.stringify({ full_name: name, email, phone, password, role }),
     });
     const data = await res.json();
     if (res.ok && data.success) {

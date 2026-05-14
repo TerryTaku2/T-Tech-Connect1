@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Find a Home | T-Tech Connect</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/for_tenants.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ── Nav ─────────────────────────────────────────────────── -->
+<nav class="ft-nav">
+  <a href="/for-tenants" class="ft-logo">
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+      <rect width="40" height="40" rx="10" fill="#1d4ed8"/>
+      <path d="M8 14h24M8 20h16M8 26h20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="30" cy="26" r="5" fill="white" fill-opacity="0.9"/>
+      <path d="M28 26l1.5 1.5L32 24" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    T-Tech Connect
+  </a>
+  <div class="ft-nav-links">
+    <a href="/browse" class="ft-nav-link">Browse Properties</a>
+    <a href="/login" class="ft-nav-link">Sign In</a>
+    <a href="/join" class="ft-nav-btn">Get Started Free</a>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────── -->
+<section class="ft-hero">
+  <div class="ft-hero-inner">
+    <div class="ft-hero-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Open to everyone not limited to students
+    </div>
+    <h1 class="ft-hero-title">Find Your Perfect Home,<br/><span class="ft-hero-accent">Anywhere You Need It</span></h1>
+    <p class="ft-hero-sub">Browse verified rental properties across multiple cities. Connect directly with landlords — no middlemen, no hassle.</p>
+
+    <!-- Quick search -->
+    <form class="ft-search-bar" action="/browse" method="GET">
+      <div class="ft-search-input-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" name="q" placeholder="Search by area, name, or landmark…" class="ft-search-input" />
+      </div>
+      <select name="city" class="ft-search-select">
+        <option value="">Any city</option>
+        {% for c in cities %}
+        <option value="{{ c.city }}">{{ c.city }} ({{ c.cnt }})</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="ft-search-btn">Search Properties</button>
+    </form>
+
+    <div class="ft-hero-stats">
+      <div class="ft-stat">
+        <span class="ft-stat-val">{{ stats.total or 0 }}+</span>
+        <span class="ft-stat-lbl">Listings</span>
+      </div>
+      <div class="ft-stat-sep"></div>
+      <div class="ft-stat">
+        <span class="ft-stat-val">{{ stats.available or 0 }}</span>
+        <span class="ft-stat-lbl">Available Now</span>
+      </div>
+      <div class="ft-stat-sep"></div>
+      <div class="ft-stat">
+        <span class="ft-stat-val">{{ cities|length }}</span>
+        <span class="ft-stat-lbl">Cities</span>
+      </div>
+      <div class="ft-stat-sep"></div>
+      <div class="ft-stat">
+        <span class="ft-stat-val">Free</span>
+        <span class="ft-stat-lbl">To Browse</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Browse by city ─────────────────────────────────────── -->
+{% if cities %}
+<section class="ft-section">
+  <div class="ft-section-inner">
+    <div class="ft-section-head">
+      <h2 class="ft-section-title">Browse by City</h2>
+      <p class="ft-section-sub">Select a city to see available rentals in that area</p>
+    </div>
+    <div class="ft-city-grid">
+      {% for c in cities %}
+      <a href="/browse?city={{ c.city|urlencode }}" class="ft-city-card">
+        <div class="ft-city-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <div class="ft-city-info">
+          <span class="ft-city-name">{{ c.city }}</span>
+          <span class="ft-city-count">{{ c.cnt }} propert{{ 'ies' if c.cnt != 1 else 'y' }}</span>
+        </div>
+        <svg class="ft-city-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      {% endfor %}
+      <a href="/browse" class="ft-city-card ft-city-card--all">
+        <div class="ft-city-icon ft-city-icon--all">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <div class="ft-city-info">
+          <span class="ft-city-name">All Locations</span>
+          <span class="ft-city-count">{{ stats.total or 0 }} total listings</span>
+        </div>
+        <svg class="ft-city-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ── How it works ───────────────────────────────────────── -->
+<section class="ft-section ft-section--alt">
+  <div class="ft-section-inner">
+    <div class="ft-section-head">
+      <h2 class="ft-section-title">How It Works</h2>
+      <p class="ft-section-sub">Finding your next home takes just a few minutes</p>
+    </div>
+    <div class="ft-steps">
+      <div class="ft-step">
+        <div class="ft-step-num">1</div>
+        <div class="ft-step-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h3 class="ft-step-title">Browse Listings</h3>
+        <p class="ft-step-desc">Explore properties in your chosen city. Filter by type, price, and amenities — no account needed to browse.</p>
+      </div>
+      <div class="ft-step-connector"></div>
+      <div class="ft-step">
+        <div class="ft-step-num">2</div>
+        <div class="ft-step-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <h3 class="ft-step-title">Create Free Account</h3>
+        <p class="ft-step-desc">Sign up in under a minute. No student ID required — just your name, email, and a password.</p>
+      </div>
+      <div class="ft-step-connector"></div>
+      <div class="ft-step">
+        <div class="ft-step-num">3</div>
+        <div class="ft-step-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3 class="ft-step-title">Contact Landlords or us if you have questions</h3>
+        <p class="ft-step-desc">Pay a small viewing fee to unlock direct messaging with landlords. Arrange viewings and move in.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ──────────────────────────────────────────── -->
+<section class="ft-section">
+  <div class="ft-section-inner">
+    <div class="ft-section-head">
+      <h2 class="ft-section-title">Why T-Tech Connect?</h2>
+      <p class="ft-section-sub">Built for everyone searching for quality accommodation</p>
+    </div>
+    <div class="ft-features">
+      <div class="ft-feature">
+        <div class="ft-feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3>Verified Listings</h3>
+        <p>All landlords are vetted. No fake listings, no wasted trips.</p>
+      </div>
+      <div class="ft-feature">
+        <div class="ft-feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3>Private & Secure</h3>
+        <p>Your contact details are never shared without your permission.</p>
+      </div>
+      <div class="ft-feature">
+        <div class="ft-feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>Direct Messaging</h3>
+        <p>Chat directly with landlords. No third parties in the middle.</p>
+      </div>
+      <div class="ft-feature">
+        <div class="ft-feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Real-Time Availability</h3>
+        <p>Listings are kept up to date — know instantly if a room is taken.</p>
+      </div>
+      <div class="ft-feature">
+        <div class="ft-feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <h3>Multi-City Coverage</h3>
+        <p>Properties across multiple cities and areas — not limited to one campus.</p>
+      </div>
+      <div class="ft-feature">
+        <div class="ft-feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3>Transparent Pricing</h3>
+        <p>Monthly rent and fees shown upfront. No hidden costs or surprises.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────── -->
+<section class="ft-cta-section">
+  <div class="ft-cta-inner">
+    <h2>Ready to Find Your Next Home?</h2>
+    <p>Join thousands of tenants who found their perfect place through T-Tech Connect.</p>
+    <div class="ft-cta-btns">
+      <a href="/join" class="ft-cta-primary">Create Free Account</a>
+      <a href="/browse" class="ft-cta-secondary">Browse First</a>
+    </div>
+    <p class="ft-cta-note">No student ID required &nbsp;·&nbsp; Free to browse &nbsp;·&nbsp; Takes 1 minute</p>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────── -->
+<footer class="ft-footer">
+  <div class="ft-footer-inner">
+    <span>© 2026 T-Tech Connect</span>
+    <div class="ft-footer-links">
+      <a href="/browse">Browse Properties</a>
+      <a href="/join">Register</a>
+      <a href="/login">Sign In</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
