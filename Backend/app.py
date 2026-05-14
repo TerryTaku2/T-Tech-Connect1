@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, make_response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -805,6 +805,48 @@ def for_tenants():
 @app.route('/join')
 def join():
     return redirect('/login#register')
+
+
+@app.route('/manifest.json')
+def pwa_manifest():
+    return jsonify({
+        "name": "T-Tech Connect",
+        "short_name": "T-Tech",
+        "description": "Connecting Tenants with Landlords",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#1d4ed8",
+        "orientation": "portrait-primary",
+        "categories": ["real estate", "housing"],
+        "icons": [
+            {"src": "/static/images/icon-72.png",  "sizes": "72x72",   "type": "image/png"},
+            {"src": "/static/images/icon-96.png",  "sizes": "96x96",   "type": "image/png"},
+            {"src": "/static/images/icon-128.png", "sizes": "128x128", "type": "image/png"},
+            {"src": "/static/images/icon-144.png", "sizes": "144x144", "type": "image/png"},
+            {"src": "/static/images/icon-152.png", "sizes": "152x152", "type": "image/png"},
+            {"src": "/static/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/static/images/icon-384.png", "sizes": "384x384", "type": "image/png"},
+            {"src": "/static/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+        ]
+    })
+
+
+@app.route('/sw.js')
+def service_worker():
+    resp = make_response(
+        open(os.path.join(app.root_path, '..', 'Frontend', 'static', 'js', 'sw.js')).read()
+    )
+    resp.headers['Content-Type'] = 'application/javascript'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+
+@app.route('/offline')
+def offline_page():
+    return render_template('offline.html')
 
 
 @app.route('/logout')
