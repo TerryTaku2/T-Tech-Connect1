@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>T-Tech Connect | Login</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -24,15 +25,7 @@
     <div class="brand-panel">
       <div class="brand-content">
         <div class="logo-wrap">
-          <div class="logo-icon">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect width="40" height="40" rx="12" fill="white" fill-opacity="0.2"/>
-              <path d="M8 14h24M8 20h16M8 26h20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-              <circle cx="30" cy="26" r="5" fill="white" fill-opacity="0.9"/>
-              <path d="M28 26l1.5 1.5L32 24" stroke="#1e40af" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <span class="logo-text">T-Tech Connect</span>
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="T-Tech Connect" style="height:80px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.15))" />
         </div>
 
         <h1 class="brand-headline">Your Accommodation,<br />Simplified.</h1>

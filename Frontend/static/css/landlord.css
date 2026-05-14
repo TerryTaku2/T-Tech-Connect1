@@ -59,6 +59,7 @@ html, body {
 .logo-wrap { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
 .logo-icon { display: flex; align-items: center; justify-content: center; }
 .logo-text { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+.logo-img  { height: 42px; width: auto; object-fit: contain; }
 
 .user-pill { display: flex; align-items: center; gap: .6rem; }
 .user-avatar {
