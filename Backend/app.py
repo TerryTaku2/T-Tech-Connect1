@@ -463,15 +463,26 @@ def _save_property(pid):
             property_id = cur.lastrowid
             flash('Property listed successfully!', 'success')
         else:
-            conn.execute("""
-                UPDATE properties SET
-                    title=?,property_type=?,description=?,status=?,is_shared=?,
-                    total_rooms=?,available_rooms=?,bathrooms=?,price_per_month=?,currency=?,
-                    address=?,city=?,country=?,latitude=?,longitude=?,
-                    services=?,contact_phone=?,contact_email=?,nearby_landmark=?,student_friendly=?,
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE id=? AND landlord_id=?
-            """, (*data, pid, session['user_id']))
+            if session.get('user_role') == 'admin':
+                conn.execute("""
+                    UPDATE properties SET
+                        title=?,property_type=?,description=?,status=?,is_shared=?,
+                        total_rooms=?,available_rooms=?,bathrooms=?,price_per_month=?,currency=?,
+                        address=?,city=?,country=?,latitude=?,longitude=?,
+                        services=?,contact_phone=?,contact_email=?,nearby_landmark=?,student_friendly=?,
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE id=?
+                """, (*data, pid))
+            else:
+                conn.execute("""
+                    UPDATE properties SET
+                        title=?,property_type=?,description=?,status=?,is_shared=?,
+                        total_rooms=?,available_rooms=?,bathrooms=?,price_per_month=?,currency=?,
+                        address=?,city=?,country=?,latitude=?,longitude=?,
+                        services=?,contact_phone=?,contact_email=?,nearby_landmark=?,student_friendly=?,
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND landlord_id=?
+                """, (*data, pid, session['user_id']))
             property_id = pid
             flash('Property updated successfully!', 'success')
         conn.commit()
