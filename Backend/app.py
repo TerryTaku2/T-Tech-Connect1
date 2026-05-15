@@ -1420,9 +1420,8 @@ def api_start_conversation():
     role = session.get('user_role')
     if role == 'student' and property_id:
         with get_db() as conn:
-            recipient_role = (conn.execute(
-                "SELECT role FROM users WHERE id=?", (recipient_id,)
-            ).fetchone() or {}).get('role')
+            row = conn.execute("SELECT role FROM users WHERE id=?", (recipient_id,)).fetchone()
+            recipient_role = row['role'] if row else None
         if recipient_role != 'admin' and not has_paid(uid, property_id):
             return jsonify({'error': 'Commission payment required to contact this landlord'}), 403
 
