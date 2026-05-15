@@ -221,7 +221,24 @@
         </div>
 
         <div class="prop-body">
-          <h3 class="prop-title">{{ p.title }}</h3>
+          <h3 class="prop-title">
+            {{ p.title }}
+            {% if p.landlord_verified %}
+            <span class="verified-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Verified
+            </span>
+            {% endif %}
+          </h3>
+
+          {% if p.review_count > 0 %}
+          <div class="star-row">
+            {% for i in range(1, 6) %}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="{{ '#f59e0b' if p.avg_rating >= i - 0.5 else '#e2e8f0' }}" stroke="{{ '#f59e0b' if p.avg_rating >= i - 0.5 else '#d1d5db' }}" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            {% endfor %}
+            <span class="star-count">{{ "%.1f"|format(p.avg_rating) }} ({{ p.review_count }})</span>
+          </div>
+          {% endif %}
 
           <div class="prop-location">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>

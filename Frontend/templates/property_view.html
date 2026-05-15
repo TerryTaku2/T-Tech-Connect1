@@ -161,6 +161,86 @@
 
         </div>
 
+        <!-- ── Reviews ─────────────────────────────────────── -->
+        <div class="detail-card">
+          <h3 class="detail-card-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Tenant Reviews</span>
+            {% if prop.review_count > 0 %}
+            <span style="display:flex;align-items:center;gap:.3rem;font-weight:400;font-size:.85rem;color:#6b7280">
+              {% for i in range(1, 6) %}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="{{ '#f59e0b' if prop.avg_rating >= i - 0.5 else '#e2e8f0' }}" stroke="{{ '#f59e0b' if prop.avg_rating >= i - 0.5 else '#d1d5db' }}" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              {% endfor %}
+              {{ "%.1f"|format(prop.avg_rating) }} · {{ prop.review_count }} review{{ 's' if prop.review_count != 1 }}
+            </span>
+            {% endif %}
+          </h3>
+
+          {% if reviews %}
+          <div class="reviews-list">
+            {% for rv in reviews %}
+            <div class="review-card">
+              <div class="review-header">
+                <div style="display:flex;align-items:center;gap:.6rem">
+                  <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                    {{ rv.reviewer_name[0].upper() if rv.reviewer_name else 'T' }}
+                  </div>
+                  <div>
+                    <div class="reviewer-name">{{ rv.reviewer_name.split()[0] if rv.reviewer_name else 'Tenant' }}</div>
+                    <div style="display:flex;gap:.15rem;margin-top:.15rem">
+                      {% for i in range(1, 6) %}
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="{{ '#f59e0b' if rv.rating >= i else '#e2e8f0' }}" stroke="{{ '#f59e0b' if rv.rating >= i else '#d1d5db' }}" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+                <span class="review-date">{{ rv.created_at[:10] if rv.created_at else '' }}</span>
+              </div>
+              {% if rv.comment %}
+              <p class="review-body">{{ rv.comment }}</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="font-size:.875rem;color:#9ca3af;text-align:center;padding:.75rem 0">No reviews yet — be the first to share your experience.</p>
+          {% endif %}
+
+          <!-- Review form — tenants only, one per property -->
+          {% if user_role == 'student' %}
+            {% if user_reviewed %}
+            <div class="already-reviewed">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              You rated this property {{ user_reviewed.rating }} star{{ 's' if user_reviewed.rating != 1 }}. Thank you!
+            </div>
+            {% else %}
+            <div class="review-form-card">
+              <p class="review-form-title">Leave a Review</p>
+              <form method="POST" action="/property/{{ prop.id }}/review" id="review-form">
+                <div class="star-picker" id="star-picker">
+                  {% for i in range(1, 6) %}
+                  <svg class="star-pick" data-val="{{ i }}" width="28" height="28" viewBox="0 0 24 24"
+                       fill="#d1d5db" stroke="#9ca3af" stroke-width="1.5" style="cursor:pointer"
+                       onclick="pickStar({{ i }})">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                  {% endfor %}
+                  <span id="star-label" style="font-size:.8rem;color:#9ca3af;margin-left:.4rem;align-self:center"></span>
+                </div>
+                <input type="hidden" name="rating" id="rating-val" />
+                <textarea name="comment" class="review-textarea"
+                          placeholder="Share your experience with this property (optional)…"
+                          rows="3" maxlength="500"></textarea>
+                <button type="submit" class="review-submit"
+                        onclick="if(!document.getElementById('rating-val').value){alert('Please select a star rating.');return false;}">
+                  Post Review
+                </button>
+              </form>
+            </div>
+            {% endif %}
+          {% endif %}
+
+        </div>
+
       </div>
 
       <!-- Right column: contact + quick facts -->
@@ -173,7 +253,15 @@
           <div class="landlord-row">
             <div class="landlord-avatar">{{ prop.landlord_name[0].upper() if prop.landlord_name else 'L' }}</div>
             <div>
-              <div class="landlord-name">{{ prop.landlord_name }}</div>
+              <div class="landlord-name">
+                {{ prop.landlord_name }}
+                {% if prop.landlord_verified %}
+                <span class="verified-badge" style="margin-left:.4rem">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Verified
+                </span>
+                {% endif %}
+              </div>
               <div class="landlord-sub">Property Owner</div>
             </div>
           </div>
@@ -198,7 +286,15 @@
           <div class="landlord-row">
             <div class="landlord-avatar">{{ prop.landlord_name[0].upper() if prop.landlord_name else 'L' }}</div>
             <div>
-              <div class="landlord-name">{{ prop.landlord_name }}</div>
+              <div class="landlord-name">
+                {{ prop.landlord_name }}
+                {% if prop.landlord_verified %}
+                <span class="verified-badge" style="margin-left:.4rem">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Verified
+                </span>
+                {% endif %}
+              </div>
               <div class="landlord-sub">Property Owner</div>
             </div>
           </div>
@@ -695,6 +791,35 @@
       btnText.textContent = 'Send Message';
     }
   }
+</script>
+
+<script>
+const starLabels = ['','Terrible','Poor','Average','Good','Excellent'];
+function pickStar(val) {
+  document.getElementById('rating-val').value = val;
+  document.getElementById('star-label').textContent = starLabels[val] || '';
+  document.querySelectorAll('.star-pick').forEach((s, i) => {
+    const filled = i < val;
+    s.setAttribute('fill',   filled ? '#f59e0b' : '#d1d5db');
+    s.setAttribute('stroke', filled ? '#f59e0b' : '#9ca3af');
+  });
+}
+document.querySelectorAll('.star-pick').forEach(s => {
+  s.addEventListener('mouseenter', () => {
+    const v = parseInt(s.dataset.val);
+    document.querySelectorAll('.star-pick').forEach((x, i) => {
+      x.setAttribute('fill',   i < v ? '#fbbf24' : '#d1d5db');
+      x.setAttribute('stroke', i < v ? '#fbbf24' : '#9ca3af');
+    });
+  });
+  s.addEventListener('mouseleave', () => {
+    const current = parseInt(document.getElementById('rating-val').value || '0');
+    document.querySelectorAll('.star-pick').forEach((x, i) => {
+      x.setAttribute('fill',   i < current ? '#f59e0b' : '#d1d5db');
+      x.setAttribute('stroke', i < current ? '#f59e0b' : '#9ca3af');
+    });
+  });
+});
 </script>
 
 </body>

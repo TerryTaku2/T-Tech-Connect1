@@ -453,3 +453,29 @@ html, body {
   .browse-cta-inner { flex-direction: column; text-align: center; }
   .browse-cta-actions { justify-content: center; }
 }
+
+/* ── Verified Badge ──────────────────────────────────────────── */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 99px;
+  font-size: .7rem;
+  font-weight: 600;
+  padding: .15rem .5rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ── Star Rating ─────────────────────────────────────────────── */
+.star-row {
+  display: flex;
+  align-items: center;
+  gap: .12rem;
+  margin-top: .3rem;
+  margin-bottom: .1rem;
+}
+.star-count { font-size: .72rem; color: #6b7280; margin-left: .25rem; }

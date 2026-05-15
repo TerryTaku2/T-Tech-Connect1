@@ -73,11 +73,28 @@ def init_db():
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {typedef}")
 
+        if 'is_verified' not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+
         prop_cols = {r[1] for r in conn.execute("PRAGMA table_info(properties)").fetchall()}
         if 'nearby_landmark' not in prop_cols:
             conn.execute("ALTER TABLE properties ADD COLUMN nearby_landmark TEXT DEFAULT ''")
         if 'student_friendly' not in prop_cols:
             conn.execute("ALTER TABLE properties ADD COLUMN student_friendly INTEGER DEFAULT 0")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                property_id INTEGER NOT NULL,
+                reviewer_id INTEGER NOT NULL,
+                rating INTEGER NOT NULL,
+                comment TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (property_id) REFERENCES properties(id),
+                FOREIGN KEY (reviewer_id) REFERENCES users(id),
+                UNIQUE(property_id, reviewer_id)
+            )
+        """)
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS password_resets (
@@ -716,9 +733,12 @@ def dashboard():
         """).fetchone()
 
         props = conn.execute(f"""
-            SELECT p.*, u.full_name as landlord_name
+            SELECT p.*, u.full_name as landlord_name, u.is_verified as landlord_verified,
+                   COALESCE(AVG(r.rating), 0) as avg_rating, COUNT(r.id) as review_count
             FROM properties p JOIN users u ON p.landlord_id=u.id
+            LEFT JOIN reviews r ON r.property_id=p.id
             WHERE {where}
+            GROUP BY p.id
             ORDER BY p.created_at DESC
         """, params).fetchall()
 
@@ -795,9 +815,12 @@ def browse():
         """).fetchone()
 
         props = conn.execute(f"""
-            SELECT p.*, u.full_name as landlord_name
+            SELECT p.*, u.full_name as landlord_name, u.is_verified as landlord_verified,
+                   COALESCE(AVG(r.rating), 0) as avg_rating, COUNT(r.id) as review_count
             FROM properties p JOIN users u ON p.landlord_id=u.id
+            LEFT JOIN reviews r ON r.property_id=p.id
             WHERE {where}
+            GROUP BY p.id
             ORDER BY p.created_at DESC
         """, params).fetchall()
 
@@ -1023,9 +1046,12 @@ def reset_password(token):
 def landlord_dashboard():
     lid = session['user_id']
     with get_db() as conn:
-        props = conn.execute(
-            "SELECT * FROM properties WHERE landlord_id=? AND is_active=1 ORDER BY created_at DESC", (lid,)
-        ).fetchall()
+        props = conn.execute("""
+            SELECT p.*, COALESCE(AVG(r.rating), 0) as avg_rating, COUNT(r.id) as review_count
+            FROM properties p LEFT JOIN reviews r ON r.property_id=p.id
+            WHERE p.landlord_id=? AND p.is_active=1
+            GROUP BY p.id ORDER BY p.created_at DESC
+        """, (lid,)).fetchall()
         stats = conn.execute("""
             SELECT COUNT(*) as total,
                 SUM(CASE WHEN status='available'   THEN 1 ELSE 0 END) as available,
@@ -1177,9 +1203,14 @@ def pay_commission(pid):
 def property_view(pid):
     with get_db() as conn:
         prop = conn.execute(
-            """SELECT p.*, u.full_name as landlord_name, u.id as landlord_user_id
+            """SELECT p.*, u.full_name as landlord_name, u.id as landlord_user_id,
+                      u.is_verified as landlord_verified,
+                      COALESCE(AVG(r.rating), 0) as avg_rating,
+                      COUNT(r.id) as review_count
                FROM properties p JOIN users u ON p.landlord_id = u.id
-               WHERE p.id=? AND p.is_active=1""", (pid,)
+               LEFT JOIN reviews r ON r.property_id = p.id
+               WHERE p.id=? AND p.is_active=1
+               GROUP BY p.id""", (pid,)
         ).fetchone()
     if not prop:
         flash('Property not found.', 'error')
@@ -1190,8 +1221,18 @@ def property_view(pid):
 
     uid  = session['user_id']
     role = session.get('user_role')
-    # Landlords, admins, and the property owner always have full access
     paid = True if role in ('landlord', 'admin') else has_paid(uid, pid)
+
+    with get_db() as conn:
+        reviews_rows = conn.execute("""
+            SELECT r.rating, r.comment, r.created_at, u.full_name as reviewer_name
+            FROM reviews r JOIN users u ON r.reviewer_id=u.id
+            WHERE r.property_id=? ORDER BY r.created_at DESC
+        """, (pid,)).fetchall()
+        user_reviewed = conn.execute(
+            "SELECT rating FROM reviews WHERE property_id=? AND reviewer_id=?",
+            (pid, uid)
+        ).fetchone()
 
     return render_template('property_view.html', prop=d, maps_key=GOOGLE_MAPS_API_KEY,
                            user_name=session.get('user_name'),
@@ -1199,7 +1240,42 @@ def property_view(pid):
                            user_email=session.get('user_email'),
                            current_user_id=uid,
                            has_paid=paid,
+                           reviews=[dict(r) for r in reviews_rows],
+                           user_reviewed=user_reviewed,
                            unread_count=get_unread_count(uid))
+
+
+@app.route('/property/<int:pid>/review', methods=['POST'])
+@login_required
+def submit_review(pid):
+    uid  = session['user_id']
+    role = session.get('user_role')
+    if role != 'student':
+        flash('Only tenants can leave reviews.', 'error')
+        return redirect(url_for('property_view', pid=pid))
+
+    rating  = (request.form.get('rating') or '').strip()
+    comment = (request.form.get('comment') or '').strip()[:500]
+
+    if not rating or not rating.isdigit() or not (1 <= int(rating) <= 5):
+        flash('Please select a rating between 1 and 5 stars.', 'error')
+        return redirect(url_for('property_view', pid=pid))
+
+    with get_db() as conn:
+        if not conn.execute("SELECT id FROM properties WHERE id=? AND is_active=1", (pid,)).fetchone():
+            flash('Property not found.', 'error')
+            return redirect(url_for('dashboard'))
+        try:
+            conn.execute(
+                "INSERT INTO reviews (property_id, reviewer_id, rating, comment) VALUES (?,?,?,?)",
+                (pid, uid, int(rating), comment)
+            )
+            conn.commit()
+            flash('Your review has been posted. Thank you!', 'success')
+        except Exception:
+            flash('You have already reviewed this property.', 'info')
+
+    return redirect(url_for('property_view', pid=pid))
 
 
 # ── Messaging routes ──────────────────────────────────────────────────────────
@@ -1644,7 +1720,7 @@ def admin_users():
     where = ('WHERE ' + ' AND '.join(filters)) if filters else ''
     with get_db() as conn:
         users = conn.execute(
-            f"SELECT id,full_name,email,role,is_active,phone,created_at,last_login "
+            f"SELECT id,full_name,email,role,is_active,is_verified,phone,created_at,last_login "
             f"FROM users {where} ORDER BY created_at DESC", params
         ).fetchall()
     return render_template('admin_users.html', users=users,
@@ -1680,6 +1756,21 @@ def admin_user_set_role(uid):
         conn.execute("UPDATE users SET role=? WHERE id=?", (role, uid))
         conn.commit()
     return jsonify({'success': True})
+
+
+@app.route('/admin/users/<int:uid>/toggle-verified', methods=['POST'])
+@admin_required
+def admin_user_toggle_verified(uid):
+    with get_db() as conn:
+        user = conn.execute("SELECT is_verified, role FROM users WHERE id=?", (uid,)).fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        if user['role'] != 'landlord':
+            return jsonify({'error': 'Only landlords can be verified'}), 400
+        new = 0 if user['is_verified'] else 1
+        conn.execute("UPDATE users SET is_verified=? WHERE id=?", (new, uid))
+        conn.commit()
+    return jsonify({'success': True, 'is_verified': new})
 
 
 @app.route('/admin/users/<int:uid>/delete', methods=['POST'])

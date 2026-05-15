@@ -55,6 +55,7 @@
             <th>User</th>
             <th>Role</th>
             <th>Status</th>
+            <th>Verified</th>
             <th>Joined</th>
             <th>Last Login</th>
             <th>Actions</th>
@@ -86,6 +87,22 @@
                       onclick="toggleUser({{ u.id }})">
                 {{ 'Active' if u.is_active else 'Inactive' }}
               </button>
+            </td>
+            <td>
+              {% if u.role == 'landlord' %}
+              <button id="verify-btn-{{ u.id }}"
+                      class="btn-verify {% if u.is_verified %}btn-unverify{% endif %}"
+                      onclick="toggleVerified({{ u.id }})">
+                {% if u.is_verified %}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Verified
+                {% else %}
+                Verify
+                {% endif %}
+              </button>
+              {% else %}
+              <span class="cell-muted">—</span>
+              {% endif %}
             </td>
             <td class="cell-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
             <td class="cell-muted">{{ u.last_login[:10] if u.last_login else 'Never' }}</td>
@@ -152,6 +169,21 @@ async function deleteUser(uid, name) {
     if (row) row.remove();
   } else {
     alert(data.error || 'Failed to delete user');
+  }
+}
+
+async function toggleVerified(uid) {
+  const btn = document.getElementById(`verify-btn-${uid}`);
+  const res  = await fetch(`/admin/users/${uid}/toggle-verified`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    const v = data.is_verified;
+    btn.className = `btn-verify ${v ? 'btn-unverify' : ''}`;
+    btn.innerHTML = v
+      ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Verified'
+      : 'Verify';
+  } else {
+    alert(data.error || 'Failed');
   }
 }
 

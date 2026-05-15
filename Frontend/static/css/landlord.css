@@ -612,3 +612,129 @@ html, body {
   .stats-grid { grid-template-columns: 1fr; }
   .prop-footer { flex-direction: column; align-items: flex-start; }
 }
+
+/* ── Verified Badge ─────────────────────────────────────────── */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 99px;
+  font-size: .7rem;
+  font-weight: 600;
+  padding: .15rem .5rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.verified-badge svg { flex-shrink: 0; }
+
+/* ── Star Rating Display ────────────────────────────────────── */
+.star-row {
+  display: flex;
+  align-items: center;
+  gap: .12rem;
+  margin-top: .3rem;
+}
+.star-count {
+  font-size: .75rem;
+  color: #6b7280;
+  margin-left: .25rem;
+}
+
+/* ── Review Cards ───────────────────────────────────────────── */
+.reviews-list { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1rem; }
+.review-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: .85rem 1rem;
+}
+.review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: .35rem;
+}
+.reviewer-name { font-weight: 600; font-size: .85rem; color: #111827; }
+.review-date   { font-size: .72rem; color: #9ca3af; white-space: nowrap; padding-top: .1rem; }
+.review-body   { font-size: .83rem; color: #4b5563; line-height: 1.55; margin-top: .35rem; }
+
+/* ── Review Form ────────────────────────────────────────────── */
+.review-form-card {
+  background: #f0f4ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 1.1rem 1.15rem;
+  margin-top: .75rem;
+}
+.review-form-title { font-weight: 700; font-size: .9rem; margin: 0 0 .7rem; color: #111827; }
+.star-picker { display: flex; align-items: center; gap: .3rem; margin-bottom: .65rem; }
+.star-picker svg { transition: transform .1s; }
+.star-picker svg:hover { transform: scale(1.2); }
+.review-textarea {
+  width: 100%;
+  min-height: 72px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: .55rem .75rem;
+  font-size: .85rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  background: #fff;
+}
+.review-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+.review-submit {
+  margin-top: .6rem;
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: .5rem 1.1rem;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .2s;
+}
+.review-submit:hover { background: #1e3a8a; }
+.already-reviewed {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: .65rem .9rem;
+  font-size: .83rem;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+}
+
+/* ── Admin Verify Button ────────────────────────────────────── */
+.btn-verify {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: .28rem .65rem;
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+.btn-verify:hover { background: #dbeafe; }
+.btn-unverify {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fed7aa;
+}
+.btn-unverify:hover { background: #ffedd5; }
