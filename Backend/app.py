@@ -83,6 +83,15 @@ def init_db():
             conn.execute("ALTER TABLE properties ADD COLUMN student_friendly INTEGER DEFAULT 0")
 
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
+        if not conn.execute("SELECT 1 FROM settings WHERE key='commission_rate'").fetchone():
+            conn.execute("INSERT INTO settings (key, value) VALUES ('commission_rate', '5')")
+
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 property_id INTEGER NOT NULL,
@@ -335,6 +344,12 @@ def has_paid(student_id, property_id):
             "SELECT 1 FROM payments WHERE student_id=? AND property_id=?",
             (student_id, property_id)
         ).fetchone())
+
+
+def get_commission_rate():
+    with get_db() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key='commission_rate'").fetchone()
+    return float(row['value']) / 100 if row else 0.05
 
 
 def _get_own_property(pid):
@@ -1044,47 +1059,6 @@ def _send_reset_email(to_email, name, reset_url):
         app.logger.error(f"Password reset email failed: {e}")
 
 
-def _send_welcome_email(to_email, name, role):
-    role_label = 'Tenant' if role == 'student' else role.capitalize()
-    dashboard  = 'https://t-tech-connect.onrender.com/dashboard' if role == 'student' else 'https://t-tech-connect.onrender.com/landlord'
-    try:
-        html_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <body style="margin:0;padding:0;background:#f0f4ff;font-family:Inter,system-ui,sans-serif">
-          <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-            <div style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);padding:32px;text-align:center">
-              <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Welcome to T-Tech Connect!</h1>
-              <p style="color:rgba(255,255,255,.8);margin:6px 0 0;font-size:14px">Connecting Tenants with Landlords</p>
-            </div>
-            <div style="padding:36px 32px">
-              <h2 style="color:#111827;font-size:18px;margin:0 0 8px">Hi {name},</h2>
-              <p style="color:#6b7280;line-height:1.6;margin:0 0 16px">
-                Your <strong>{role_label}</strong> account has been created successfully. You're all set to get started on T-Tech Connect.
-              </p>
-              {'<p style="color:#6b7280;line-height:1.6;margin:0 0 24px">Browse available properties, contact landlords directly, and find your perfect home.</p>' if role == 'student' else '<p style="color:#6b7280;line-height:1.6;margin:0 0 24px">Start listing your properties and connect with tenants looking for accommodation.</p>'}
-              <div style="text-align:center;margin:0 0 28px">
-                <a href="{dashboard}"
-                   style="display:inline-block;padding:14px 32px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
-                  Go to My Dashboard
-                </a>
-              </div>
-              <p style="color:#9ca3af;font-size:13px;line-height:1.6;margin:0">
-                If you have any questions, reply to this email or use the Contact Support option inside the app.
-              </p>
-            </div>
-            <div style="background:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #f3f4f6">
-              <p style="color:#9ca3af;font-size:12px;margin:0">© 2026 T-Tech Connect · This is an automated message, please do not reply.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-        """
-        _send_email(to_email, "Welcome to T-Tech Connect!", html_body)
-    except Exception as e:
-        app.logger.error(f"Welcome email failed: {e}")
-
-
 def _send_verification_email(to_email, name, role, verify_url):
     role_label = 'Tenant' if role == 'student' else role.capitalize()
     try:
@@ -1371,7 +1345,7 @@ def pay_commission(pid):
     if not reference:
         return jsonify({'error': 'Payment reference is required'}), 400
 
-    amount = round(prop['price_per_month'] * 0.05, 2)
+    amount = round(prop['price_per_month'] * get_commission_rate(), 2)
     with get_db() as conn:
         conn.execute(
             """INSERT OR IGNORE INTO payments (student_id, property_id, amount, currency, reference)
@@ -1402,7 +1376,9 @@ def property_view(pid):
         return redirect(url_for('dashboard'))
     d = {**dict(prop), 'services': json.loads(prop['services'] or '[]'),
          'images': _get_images(pid)}
-    d['commission'] = round(d['price_per_month'] * 0.05, 2)
+    rate = get_commission_rate()
+    d['commission'] = round(d['price_per_month'] * rate, 2)
+    d['commission_pct'] = round(rate * 100, 1)
 
     uid  = session['user_id']
     role = session.get('user_role')
@@ -1848,6 +1824,30 @@ def _admin_common():
                 unread_count=get_unread_count(session['user_id']))
 
 
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@admin_required
+def admin_settings():
+    if request.method == 'POST':
+        data = request.get_json() or {}
+        rate = data.get('commission_rate')
+        try:
+            rate = float(rate)
+            if not (0 <= rate <= 100):
+                return jsonify({'error': 'Rate must be between 0 and 100'}), 400
+            rate = round(rate, 2)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid rate value'}), 400
+        with get_db() as conn:
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('commission_rate', ?)", (str(rate),))
+            conn.commit()
+        return jsonify({'success': True, 'commission_rate': rate})
+
+    with get_db() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key='commission_rate'").fetchone()
+    current_rate = float(row['value']) if row else 5.0
+    return jsonify({'commission_rate': current_rate})
+
+
 @app.route('/admin/test-email')
 @admin_required
 def admin_test_email():
@@ -1894,11 +1894,16 @@ def admin_dashboard():
             ORDER BY pay.paid_at DESC LIMIT 6
         """).fetchall()
 
+    with get_db() as conn:
+        rate_row = conn.execute("SELECT value FROM settings WHERE key='commission_rate'").fetchone()
+    commission_rate = float(rate_row['value']) if rate_row else 5.0
+
     return render_template('admin_dashboard.html',
                            stats=stats,
                            recent_users=recent_users,
                            recent_props=recent_props,
                            recent_payments=recent_payments,
+                           commission_rate=commission_rate,
                            **_admin_common())
 
 

@@ -31,7 +31,7 @@
       </div>
       <div class="stat-card stat-indigo">
         <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-        <div class="stat-body"><span class="stat-value">{{ stats.students or 0 }}</span><span class="stat-label">Students</span></div>
+        <div class="stat-body"><span class="stat-value">{{ stats.students or 0 }}</span><span class="stat-label">Tenants</span></div>
       </div>
       <div class="stat-card stat-purple">
         <div class="stat-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
@@ -69,7 +69,7 @@
                 <div class="cell-main">{{ u.full_name }}</div>
                 <div class="cell-sub">{{ u.email }}</div>
               </td>
-              <td><span class="role-pill role-{{ u.role }}">{{ u.role|title }}</span></td>
+              <td><span class="role-pill role-{{ u.role }}">{% if u.role == 'student' %}Tenant{% else %}{{ u.role|title }}{% endif %}</span></td>
               <td><span class="status-dot {{ 'dot-green' if u.is_active else 'dot-red' }}">{{ 'Active' if u.is_active else 'Inactive' }}</span></td>
               <td class="cell-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
             </tr>
@@ -107,6 +107,43 @@
 
     </div>
 
+    <!-- Commission Rate Setting -->
+    <div class="admin-panel" style="margin-top:1.5rem">
+      <div class="admin-panel-header">
+        <h3 class="admin-panel-title">Commission Rate</h3>
+        <span style="font-size:.8rem;color:#6b7280">Applied when tenants pay to contact a landlord</span>
+      </div>
+      <div style="padding:1.25rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <p style="margin:0 0 .35rem;font-size:.85rem;color:#6b7280">Current rate applied to monthly rent</p>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div style="position:relative;width:120px">
+              <input type="number" id="commission-input" value="{{ commission_rate }}" min="0" max="100" step="0.5"
+                style="width:100%;padding:.6rem 2rem .6rem .85rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:1rem;font-weight:700;color:#111827;outline:none;box-sizing:border-box"
+                onfocus="this.style.borderColor='#1d4ed8'" onblur="this.style.borderColor='#e5e7eb'" />
+              <span style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);color:#6b7280;font-weight:600;pointer-events:none">%</span>
+            </div>
+            <div style="display:flex;gap:.4rem">
+              <button onclick="adjustRate(-1)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151" title="Decrease by 1%">−</button>
+              <button onclick="adjustRate(1)"  style="width:32px;height:32px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;color:#374151" title="Increase by 1%">+</button>
+            </div>
+            <button onclick="saveRate()"
+              style="padding:.55rem 1.25rem;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:.875rem;cursor:pointer">
+              Save
+            </button>
+          </div>
+          <p id="rate-msg" style="margin:.5rem 0 0;font-size:.8rem;display:none"></p>
+        </div>
+        <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;padding:.85rem 1.25rem;min-width:200px">
+          <p style="margin:0 0 .25rem;font-size:.78rem;color:#6b7280;font-weight:500">Example calculation</p>
+          <p style="margin:0;font-size:.875rem;color:#374151">
+            $500 rent × <span id="example-pct">{{ commission_rate }}</span>% =
+            <strong id="example-fee" style="color:#1d4ed8">${{ "%.2f"|format(commission_rate / 100 * 500) }}</strong>
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Recent Payments -->
     <div class="admin-panel" style="margin-top:1.5rem">
       <div class="admin-panel-header">
@@ -114,7 +151,7 @@
         <a href="/admin/payments" class="admin-panel-link">View all</a>
       </div>
       <table class="admin-table">
-        <thead><tr><th>Student</th><th>Property</th><th>Amount</th><th>Reference</th><th>Date</th></tr></thead>
+        <thead><tr><th>Tenant</th><th>Property</th><th>Amount</th><th>Reference</th><th>Date</th></tr></thead>
         <tbody>
           {% for pay in recent_payments %}
           <tr>
@@ -133,5 +170,53 @@
 
   </main>
 </div>
+
+<script>
+function adjustRate(delta) {
+  const inp = document.getElementById('commission-input');
+  let val = parseFloat(inp.value) || 0;
+  val = Math.min(100, Math.max(0, Math.round((val + delta) * 10) / 10));
+  inp.value = val;
+  updateExample(val);
+}
+
+document.getElementById('commission-input').addEventListener('input', function() {
+  updateExample(parseFloat(this.value) || 0);
+});
+
+function updateExample(pct) {
+  document.getElementById('example-pct').textContent = pct;
+  document.getElementById('example-fee').textContent = '$' + (pct / 100 * 500).toFixed(2);
+}
+
+async function saveRate() {
+  const inp  = document.getElementById('commission-input');
+  const msg  = document.getElementById('rate-msg');
+  const rate = parseFloat(inp.value);
+  if (isNaN(rate) || rate < 0 || rate > 100) {
+    msg.style.display = ''; msg.style.color = '#dc2626';
+    msg.textContent = 'Enter a value between 0 and 100.'; return;
+  }
+  try {
+    const res  = await fetch('/admin/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commission_rate: rate })
+    });
+    const data = await res.json();
+    msg.style.display = '';
+    if (data.success) {
+      msg.style.color = '#16a34a';
+      msg.textContent = `✓ Commission rate saved as ${rate}%`;
+    } else {
+      msg.style.color = '#dc2626';
+      msg.textContent = data.error || 'Failed to save.';
+    }
+  } catch {
+    msg.style.display = ''; msg.style.color = '#dc2626';
+    msg.textContent = 'Network error. Try again.';
+  }
+}
+</script>
 </body>
 </html>
