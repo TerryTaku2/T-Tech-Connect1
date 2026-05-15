@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from flask_mail import Mail, Message
+import requests as http_requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
@@ -20,16 +20,10 @@ app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(days=7)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB total upload limit
 
-# ── Email (Flask-Mail) ────────────────────────────────────────────────────────
-app.config['MAIL_SERVER']        = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT']          = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS']       = True
-app.config['MAIL_USE_SSL']       = False
-app.config['MAIL_USERNAME']      = os.environ.get('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD']      = os.environ.get('MAIL_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = ('T-Tech Connect', os.environ.get('MAIL_USERNAME', ''))
-app.config['MAIL_DEBUG']         = False
-mail = Mail(app)
+# ── Email (SendGrid HTTP API — works on Render free tier) ─────────────────────
+SENDGRID_API_KEY    = os.environ.get('SENDGRID_API_KEY', '')
+MAIL_FROM_EMAIL     = os.environ.get('MAIL_USERNAME', 'terrencemuromba6@gmail.com')
+MAIL_FROM_NAME      = 'T-Tech Connect'
 
 GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
@@ -972,6 +966,31 @@ def forgot_password():
     return render_template('forgot_password.html')
 
 
+def _send_email(to_email, subject, html_body):
+    if not SENDGRID_API_KEY:
+        app.logger.error("SENDGRID_API_KEY not set — email not sent")
+        return False
+    try:
+        resp = http_requests.post(
+            'https://api.sendgrid.com/v3/mail/send',
+            headers={'Authorization': f'Bearer {SENDGRID_API_KEY}', 'Content-Type': 'application/json'},
+            json={
+                'personalizations': [{'to': [{'email': to_email}]}],
+                'from': {'email': MAIL_FROM_EMAIL, 'name': MAIL_FROM_NAME},
+                'subject': subject,
+                'content': [{'type': 'text/html', 'value': html_body}]
+            },
+            timeout=10
+        )
+        if resp.status_code not in (200, 202):
+            app.logger.error(f"SendGrid error {resp.status_code}: {resp.text}")
+            return False
+        return True
+    except Exception as e:
+        app.logger.error(f"Email send failed: {e}")
+        return False
+
+
 def _send_reset_email(to_email, name, reset_url):
     try:
         html_body = f"""
@@ -1008,12 +1027,7 @@ def _send_reset_email(to_email, name, reset_url):
         </body>
         </html>
         """
-        msg = Message(
-            subject="Reset your T-Tech Connect password",
-            recipients=[to_email],
-            html=html_body
-        )
-        mail.send(msg)
+        _send_email(to_email, "Reset your T-Tech Connect password", html_body)
     except Exception as e:
         app.logger.error(f"Password reset email failed: {e}")
 
@@ -1054,12 +1068,7 @@ def _send_welcome_email(to_email, name, role):
         </body>
         </html>
         """
-        msg = Message(
-            subject="Welcome to T-Tech Connect!",
-            recipients=[to_email],
-            html=html_body
-        )
-        mail.send(msg)
+        _send_email(to_email, "Welcome to T-Tech Connect!", html_body)
     except Exception as e:
         app.logger.error(f"Welcome email failed: {e}")
 
@@ -1745,16 +1754,11 @@ def _admin_common():
 @admin_required
 def admin_test_email():
     to = request.args.get('to') or session.get('user_email')
-    try:
-        msg = Message(
-            subject="T-Tech Connect — Email Test",
-            recipients=[to],
-            html=f"<p>This is a test email from T-Tech Connect. If you received this, email is working correctly.</p><p>Sent to: {to}</p>"
-        )
-        mail.send(msg)
+    ok = _send_email(to, "T-Tech Connect — Email Test",
+                     f"<p>Test email from T-Tech Connect. Email is working correctly.</p><p>Sent to: {to}</p>")
+    if ok:
         return jsonify({'success': True, 'message': f'Test email sent to {to}'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': False, 'error': 'Check SENDGRID_API_KEY env var or Render logs'}), 500
 
 
 @app.route('/admin')
