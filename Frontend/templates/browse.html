@@ -29,7 +29,7 @@
 <!-- ── Hero ───────────────────────────────────────────────── -->
 <div class="browse-hero">
   <div class="browse-hero-inner">
-    <h1 class="browse-hero-title">Find Your Perfect Student Accommodation</h1>
+    <h1 class="browse-hero-title">Find Your Perfect Home</h1>
     <p class="browse-hero-sub">Browse {{ stats.total or 0 }} listed properties near T-Tech campus. Sign up free to contact landlords.</p>
     <div class="hero-stats">
       <div class="hero-stat">
@@ -138,7 +138,7 @@
       <!-- Status + type -->
       <div class="bprop-status-bar">
         <span class="bstatus-badge bstatus-{{ p.status }}">
-          {% if p.status == 'available' %}Needs Tenants
+          {% if p.status == 'available' %}Available
           {% elif p.status == 'occupied' %}Occupied
           {% elif p.status == 'partial' %}Partially Occupied
           {% else %}Maintenance{% endif %}

@@ -151,14 +151,10 @@
 <!-- ── New Message modal (admin only) ──────────────────────────── -->
 <div id="new-msg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1200;align-items:center;justify-content:center;padding:1rem">
   <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden">
-
-    <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid #e5e7eb">
       <h3 style="margin:0;font-size:1rem;font-weight:700">New Conversation</h3>
       <button onclick="closeNewMsgModal()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:1.2rem;line-height:1;padding:.2rem">✕</button>
     </div>
-
-    <!-- User search -->
     <div style="padding:1rem 1.25rem;border-bottom:1px solid #f3f4f6">
       <div style="position:relative">
         <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -168,12 +164,9 @@
           oninput="searchUsers(this.value)" />
       </div>
     </div>
-
-    <!-- Results -->
     <div id="user-search-results" style="max-height:260px;overflow-y:auto">
       <div style="text-align:center;padding:2rem;color:#9ca3af;font-size:.875rem">Type a name or email to search users.</div>
     </div>
-
   </div>
 </div>
 {% endif %}
@@ -242,7 +235,7 @@ function searchUsers(q) {
             <div style="font-weight:600;font-size:.875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtmlChat(u.full_name)}</div>
             <div style="font-size:.75rem;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtmlChat(u.email)}</div>
           </div>
-          <span style="font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:99px;background:${roleBg[u.role]||'#f3f4f6'};color:${roleColors[u.role]||'#374151'};text-transform:capitalize;flex-shrink:0">${u.role}</span>
+          <span style="font-size:.68rem;font-weight:700;padding:.15rem .5rem;border-radius:99px;background:${roleBg[u.role]||'#f3f4f6'};color:${roleColors[u.role]||'#374151'};text-transform:capitalize;flex-shrink:0">${u.role === 'student' ? 'Tenant' : u.role.charAt(0).toUpperCase() + u.role.slice(1)}</span>
         </div>`).join('');
     } catch {
       results.innerHTML = '<div style="text-align:center;padding:2rem;color:#dc2626;font-size:.875rem">Search failed. Try again.</div>';
@@ -260,9 +253,10 @@ async function startConvWith(recipientId) {
     });
     const data = await res.json();
     if (data.conv_id) {
-      // Reload conversations then open this one
       await loadConversations();
       openConversation(data.conv_id);
+    } else {
+      alert(data.error || 'Could not start conversation.');
     }
   } catch {
     alert('Could not start conversation. Please try again.');

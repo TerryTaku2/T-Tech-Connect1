@@ -324,7 +324,7 @@
               <span>{{ prop.currency }} {{ "%.2f"|format(prop.price_per_month) }}</span>
             </div>
             <div class="commission-row commission-row--total">
-              <span>Commission (5%)</span>
+              <span>Commission ({{ prop.commission_pct }}%)</span>
               <span>{{ prop.currency }} {{ "%.2f"|format(prop.commission) }}</span>
             </div>
           </div>

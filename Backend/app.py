@@ -943,6 +943,54 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or request.form
+        current_pw  = (data.get('current_password') or '').strip()
+        new_pw      = (data.get('new_password') or '').strip()
+        confirm_pw  = (data.get('confirm_password') or '').strip()
+
+        def err(msg):
+            if request.is_json:
+                return jsonify({'success': False, 'error': msg}), 400
+            return render_template('change_password.html',
+                                   error=msg,
+                                   user_name=session.get('user_name'),
+                                   user_role=session.get('user_role'),
+                                   user_email=session.get('user_email'),
+                                   unread_count=get_unread_count(session['user_id']))
+
+        if not current_pw:
+            return err('Current password is required.')
+        if len(new_pw) < 8:
+            return err('New password must be at least 8 characters.')
+        if new_pw != confirm_pw:
+            return err('New passwords do not match.')
+
+        with get_db() as conn:
+            user = conn.execute("SELECT password_hash FROM users WHERE id=?",
+                                (session['user_id'],)).fetchone()
+            if not user or not check_password_hash(user['password_hash'], current_pw):
+                return err('Current password is incorrect.')
+            conn.execute("UPDATE users SET password_hash=? WHERE id=?",
+                         (generate_password_hash(new_pw), session['user_id']))
+            conn.commit()
+
+        if request.is_json:
+            return jsonify({'success': True})
+        flash('Password updated successfully.', 'success')
+        role = session.get('user_role')
+        return redirect('/admin' if role == 'admin' else '/landlord' if role == 'landlord' else '/dashboard')
+
+    return render_template('change_password.html',
+                           user_name=session.get('user_name'),
+                           user_role=session.get('user_role'),
+                           user_email=session.get('user_email'),
+                           unread_count=get_unread_count(session['user_id']))
+
+
 @app.route('/check-email')
 def check_email_page():
     email = request.args.get('email', '')

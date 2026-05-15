@@ -100,7 +100,7 @@
             <label class="field-label" for="status">Occupancy Status <span class="req-star">*</span></label>
             <div class="select-wrap">
               <select id="status" name="status" class="field-input">
-                <option value="available" {{ 'selected' if not prop or prop.status == 'available' }}>Available — Needs Tenants</option>
+                <option value="available" {{ 'selected' if not prop or prop.status == 'available' }}>Available</option>
                 <option value="partial"   {{ 'selected' if prop and prop.status == 'partial' }}>Partially Occupied</option>
                 <option value="occupied"  {{ 'selected' if prop and prop.status == 'occupied' }}>Fully Occupied</option>
                 <option value="maintenance" {{ 'selected' if prop and prop.status == 'maintenance' }}>Under Maintenance</option>
@@ -147,7 +147,7 @@
         <div class="toggle-card">
           <div class="toggle-info">
             <h4 class="toggle-title">Student-Friendly</h4>
-            <p class="toggle-sub">Tag this property as suitable for students — it will appear in student-friendly searches.</p>
+            <p class="toggle-sub">Tag this property as suitable for students — it will appear in student-friendly filtered searches.</p>
           </div>
           <label class="switch">
             <input type="checkbox" id="student_friendly" name="student_friendly" value="1"
