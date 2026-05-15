@@ -140,6 +140,8 @@ loginForm.addEventListener('submit', async (e) => {
       submitBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Redirecting…`;
       submitBtn.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
       setTimeout(() => { window.location.href = data.redirect || '/dashboard'; }, 600);
+    } else if (data.unverified) {
+      window.location.href = '/check-email?email=' + encodeURIComponent(data.email || '');
     } else {
       showAlert(data.error || 'Invalid email or password.');
       pwdInput.value = ''; pwdInput.focus();

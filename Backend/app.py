@@ -71,6 +71,10 @@ def init_db():
 
         if 'is_verified' not in existing_cols:
             conn.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+        if 'is_email_verified' not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN is_email_verified INTEGER DEFAULT 1")
+        if 'email_verify_token' not in existing_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN email_verify_token TEXT")
 
         prop_cols = {r[1] for r in conn.execute("PRAGMA table_info(properties)").fetchall()}
         if 'nearby_landmark' not in prop_cols:
@@ -215,7 +219,7 @@ def init_db():
         for name, email, pwd, role in seeds:
             if not conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
                 conn.execute(
-                    "INSERT INTO users (full_name, email, password_hash, role) VALUES (?,?,?,?)",
+                    "INSERT INTO users (full_name, email, password_hash, role, is_email_verified) VALUES (?,?,?,?,1)",
                     (name, email, generate_password_hash(pwd), role)
                 )
 
@@ -534,25 +538,19 @@ def register():
             return err('An account with this email already exists.')
         if phone and conn.execute("SELECT id FROM users WHERE phone=?", (phone,)).fetchone():
             return err('An account with this phone number already exists.')
+        verify_token = secrets.token_urlsafe(32)
         conn.execute(
-            "INSERT INTO users (full_name, email, password_hash, role, phone) VALUES (?,?,?,?,?)",
-            (full_name, email, generate_password_hash(password), role, phone or None)
+            "INSERT INTO users (full_name, email, password_hash, role, phone, is_email_verified, email_verify_token) VALUES (?,?,?,?,?,0,?)",
+            (full_name, email, generate_password_hash(password), role, phone or None, verify_token)
         )
         conn.commit()
-        user_id = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()['id']
 
-    _send_welcome_email(email, full_name, role)
+    verify_url = url_for('verify_email', token=verify_token, _external=True)
+    _send_verification_email(email, full_name, role, verify_url)
 
-    session.clear()
-    session['user_id']    = user_id
-    session['user_name']  = full_name
-    session['user_role']  = role
-    session['user_email'] = email
-
-    dest = role_redirect(role)
     if request.is_json:
-        return jsonify({'success': True, 'redirect': dest, 'role': role})
-    return redirect(dest)
+        return jsonify({'success': True, 'redirect': '/check-email?email=' + email, 'role': role})
+    return redirect('/check-email?email=' + email)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -598,6 +596,11 @@ def login():
 
             if user and user['password_hash'] and check_password_hash(user['password_hash'], password):
                 log_attempt(identifier_lower, ip, True)
+                if not user['is_email_verified']:
+                    msg = 'Please verify your email address before logging in.'
+                    if request.is_json:
+                        return jsonify({'success': False, 'error': msg, 'unverified': True, 'email': user['email']}), 403
+                    return redirect('/check-email?email=' + user['email'])
                 session.clear()
                 session['user_id']    = user['id']
                 session['user_name']  = user['full_name']
@@ -692,7 +695,7 @@ def choose_role():
                 session.pop('pending_google', None)
                 return redirect(url_for('login'))
             conn.execute(
-                "INSERT INTO users (full_name, email, password_hash, role, google_id) VALUES (?,?,?,?,?)",
+                "INSERT INTO users (full_name, email, password_hash, role, google_id, is_email_verified) VALUES (?,?,?,?,?,1)",
                 (g_name, g_email, '', role, g_id)
             )
             conn.commit()
@@ -925,6 +928,15 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/check-email')
+def check_email_page():
+    email = request.args.get('email', '')
+    return render_template('check_email.html',
+                           email=email,
+                           user_name=None,
+                           user_role=None)
+
+
 @app.route('/forgot-password', methods=['GET', 'POST'])
 @limiter.limit("5 per hour")
 def forgot_password():
@@ -1071,6 +1083,92 @@ def _send_welcome_email(to_email, name, role):
         _send_email(to_email, "Welcome to T-Tech Connect!", html_body)
     except Exception as e:
         app.logger.error(f"Welcome email failed: {e}")
+
+
+def _send_verification_email(to_email, name, role, verify_url):
+    role_label = 'Tenant' if role == 'student' else role.capitalize()
+    try:
+        html_body = f"""
+        <!DOCTYPE html><html><body style="margin:0;padding:0;background:#f0f4ff;font-family:Inter,system-ui,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+            <div style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);padding:32px;text-align:center">
+              <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Welcome to T-Tech Connect!</h1>
+              <p style="color:rgba(255,255,255,.8);margin:6px 0 0;font-size:14px">Connecting Tenants with Landlords</p>
+            </div>
+            <div style="padding:36px 32px">
+              <h2 style="color:#111827;font-size:18px;margin:0 0 8px">Hi {name},</h2>
+              <p style="color:#6b7280;line-height:1.6;margin:0 0 16px">
+                Welcome to T-Tech Connect as a <strong>{role_label}</strong>! We're excited to have you on board.
+              </p>
+              <p style="color:#6b7280;line-height:1.6;margin:0 0 24px">
+                To complete your registration and activate your account, please verify your email address by clicking the button below.
+              </p>
+              <div style="text-align:center;margin:0 0 28px">
+                <a href="{verify_url}"
+                   style="display:inline-block;padding:14px 32px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
+                  Verify My Email Address
+                </a>
+              </div>
+              <p style="color:#9ca3af;font-size:13px;line-height:1.6;margin:0 0 8px">
+                This link expires in <strong>24 hours</strong>. If you didn't create an account, you can safely ignore this email.
+              </p>
+              <p style="color:#9ca3af;font-size:12px;word-break:break-all;margin:0">
+                Or copy this link: {verify_url}
+              </p>
+            </div>
+            <div style="background:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #f3f4f6">
+              <p style="color:#9ca3af;font-size:12px;margin:0">© 2026 T-Tech Connect · This is an automated message, please do not reply.</p>
+            </div>
+          </div>
+        </body></html>
+        """
+        _send_email(to_email, "Verify your T-Tech Connect email address", html_body)
+    except Exception as e:
+        app.logger.error(f"Verification email failed: {e}")
+
+
+@app.route('/verify-email/<token>')
+def verify_email(token):
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE email_verify_token=? AND is_active=1", (token,)
+        ).fetchone()
+        if not user:
+            flash('Invalid or expired verification link.', 'error')
+            return redirect(url_for('login'))
+        conn.execute(
+            "UPDATE users SET is_email_verified=1, email_verify_token=NULL WHERE id=?",
+            (user['id'],)
+        )
+        conn.execute("UPDATE users SET last_login=CURRENT_TIMESTAMP, last_seen=CURRENT_TIMESTAMP WHERE id=?", (user['id'],))
+        conn.commit()
+
+    session.clear()
+    session['user_id']    = user['id']
+    session['user_name']  = user['full_name']
+    session['user_role']  = user['role']
+    session['user_email'] = user['email']
+    flash('Email verified! Welcome to T-Tech Connect.', 'success')
+    return redirect(role_redirect(user['role']))
+
+
+@app.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    email = (request.get_json() or {}).get('email', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE email=? AND is_active=1 AND is_email_verified=0", (email,)
+        ).fetchone()
+        if not user:
+            return jsonify({'success': True})  # don't reveal if email exists
+        token = secrets.token_urlsafe(32)
+        conn.execute("UPDATE users SET email_verify_token=? WHERE id=?", (token, user['id']))
+        conn.commit()
+    verify_url = url_for('verify_email', token=token, _external=True)
+    _send_verification_email(email, user['full_name'], user['role'], verify_url)
+    return jsonify({'success': True})
 
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])

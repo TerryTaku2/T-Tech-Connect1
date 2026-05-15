@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Your Email | T-Tech Connect</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}" />
+  {% include '_pwa.html' %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div class="bg-decoration">
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+  </div>
+
+  <div class="login-container login-container--centered">
+    <div class="form-panel" style="max-width:480px;width:100%">
+      <div class="form-container" style="text-align:center">
+
+        <!-- Icon -->
+        <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#dbeafe,#ede9fe);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+
+        <h2 style="font-size:1.5rem;font-weight:700;color:#111827;margin:0 0 .5rem">Check your inbox</h2>
+        <p style="color:#6b7280;line-height:1.6;margin:0 0 1.5rem">
+          We've sent a verification link to<br/>
+          <strong style="color:#111827">{{ email or 'your email address' }}</strong>
+        </p>
+
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;text-align:left">
+          <p style="margin:0 0 .35rem;font-size:.875rem;font-weight:600;color:#0369a1">What to do next:</p>
+          <ol style="margin:0;padding-left:1.25rem;color:#0c4a6e;font-size:.85rem;line-height:1.8">
+            <li>Open the email from <strong>T-Tech Connect</strong></li>
+            <li>Click <strong>"Verify My Email Address"</strong></li>
+            <li>You'll be logged in automatically</li>
+          </ol>
+        </div>
+
+        <div id="js-alert" style="display:none;padding:.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.875rem"></div>
+
+        <p style="color:#6b7280;font-size:.875rem;margin:0 0 1rem">Didn't receive it? Check your spam folder or:</p>
+
+        <button id="resend-btn" onclick="resendEmail()"
+          style="width:100%;padding:.75rem;background:#fff;border:1.5px solid #d1d5db;border-radius:10px;font-size:.9rem;font-weight:600;color:#374151;cursor:pointer;transition:all .2s;margin-bottom:1rem"
+          onmouseover="this.style.borderColor='#1d4ed8';this.style.color='#1d4ed8'"
+          onmouseout="this.style.borderColor='#d1d5db';this.style.color='#374151'">
+          Resend verification email
+        </button>
+
+        <a href="/login" style="display:block;font-size:.875rem;color:#6b7280;text-decoration:none">
+          ← Back to login
+        </a>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const email = {{ email | tojson }};
+
+    async function resendEmail() {
+      const btn   = document.getElementById('resend-btn');
+      const alert = document.getElementById('js-alert');
+      btn.disabled = true;
+      btn.textContent = 'Sending…';
+
+      try {
+        const res  = await fetch('/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        alert.style.display = '';
+        alert.style.background = '#f0fdf4';
+        alert.style.border = '1px solid #bbf7d0';
+        alert.style.color = '#166534';
+        alert.textContent = 'Verification email resent! Check your inbox.';
+      } catch {
+        alert.style.display = '';
+        alert.style.background = '#fef2f2';
+        alert.style.border = '1px solid #fecaca';
+        alert.style.color = '#991b1b';
+        alert.textContent = 'Failed to resend. Please try again.';
+      } finally {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = 'Resend verification email';
+        }, 30000);
+      }
+    }
+  </script>
+</body>
+</html>
