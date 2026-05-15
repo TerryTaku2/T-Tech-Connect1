@@ -339,6 +339,10 @@ def has_paid(student_id, property_id):
 
 def _get_own_property(pid):
     with get_db() as conn:
+        if session.get('user_role') == 'admin':
+            return conn.execute(
+                "SELECT * FROM properties WHERE id=? AND is_active=1", (pid,)
+            ).fetchone()
         return conn.execute(
             "SELECT * FROM properties WHERE id=? AND landlord_id=? AND is_active=1",
             (pid, session['user_id'])
@@ -414,12 +418,21 @@ def _save_property(pid):
     nearby_landmark  = f.get('nearby_landmark', '').strip()
     student_friendly = 1 if f.get('student_friendly') else 0
 
+    try:    total_rooms = int(total_rooms)
+    except: total_rooms = 1
+    try:    avail_rooms = int(avail_rooms)
+    except: avail_rooms = 0
+    try:    bathrooms   = int(bathrooms)
+    except: bathrooms   = 1
+
     if not title:   errors['title']   = 'Property title is required.'
     if not price:   errors['price']   = 'Monthly price is required.'
     else:
         try:    price = float(price)
         except: errors['price'] = 'Price must be a valid number.'
     if not address: errors['address'] = 'Address is required.'
+    if avail_rooms > total_rooms:
+        errors['available_rooms'] = 'Available rooms cannot exceed total rooms.'
 
     if errors:
         d = dict(f); d.update({'services': f.getlist('services'), 'id': pid})
@@ -431,7 +444,7 @@ def _save_property(pid):
 
     data = (
         title, prop_type, description, status, is_shared,
-        int(total_rooms), int(avail_rooms), int(bathrooms),
+        total_rooms, avail_rooms, bathrooms,
         price, currency, address, city, country,
         float(lat) if lat else None, float(lng) if lng else None,
         services, contact_phone, contact_email, nearby_landmark, student_friendly
@@ -468,6 +481,8 @@ def _save_property(pid):
     if uploaded:
         _save_images(property_id, uploaded)
 
+    if session.get('user_role') == 'admin':
+        return redirect(url_for('admin_properties'))
     return redirect(url_for('landlord_dashboard'))
 
 
@@ -1044,6 +1059,8 @@ def reset_password(token):
 @app.route('/landlord')
 @landlord_required
 def landlord_dashboard():
+    if session.get('user_role') == 'admin':
+        return redirect(url_for('admin_properties'))
     lid = session['user_id']
     with get_db() as conn:
         props = conn.execute("""
@@ -1098,7 +1115,7 @@ def property_edit(pid):
     prop = _get_own_property(pid)
     if not prop:
         flash('Property not found.', 'error')
-        return redirect(url_for('landlord_dashboard'))
+        return redirect(url_for('admin_properties') if session.get('user_role') == 'admin' else url_for('landlord_dashboard'))
     if request.method == 'POST': return _save_property(pid)
     d = {**dict(prop), 'services': json.loads(prop['services'] or '[]')}
     d['images'] = _get_images(pid)
@@ -1118,7 +1135,7 @@ def property_delete(pid):
         conn.commit()
     if request.is_json: return jsonify({'success': True})
     flash('Property deleted.', 'success')
-    return redirect(url_for('landlord_dashboard'))
+    return redirect(url_for('admin_properties') if session.get('user_role') == 'admin' else url_for('landlord_dashboard'))
 
 
 @app.route('/landlord/property/<int:pid>/image/<int:img_id>/delete', methods=['POST'])
@@ -1349,7 +1366,9 @@ def api_conversations():
             SELECT
                 c.id, c.subject, c.property_id, c.updated_at,
                 p.title as property_title,
-                u.id as other_id, u.full_name as other_name, u.role as other_role,
+                u.id as other_id,
+                CASE WHEN u.role='admin' THEN 'T-Tech Support' ELSE u.full_name END as other_name,
+                u.role as other_role,
                 u.last_seen as other_last_seen,
                 (SELECT content FROM messages WHERE conversation_id=c.id
                  AND is_deleted=0 ORDER BY sent_at DESC LIMIT 1) as last_msg,
