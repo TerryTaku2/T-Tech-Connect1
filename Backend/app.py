@@ -21,12 +21,14 @@ app.permanent_session_lifetime = timedelta(days=7)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB total upload limit
 
 # ── Email (Flask-Mail) ────────────────────────────────────────────────────────
-app.config['MAIL_SERVER']   = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT']     = int(os.environ.get('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS']  = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+app.config['MAIL_SERVER']        = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT']          = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS']       = True
+app.config['MAIL_USE_SSL']       = False
+app.config['MAIL_USERNAME']      = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD']      = os.environ.get('MAIL_PASSWORD', '')
 app.config['MAIL_DEFAULT_SENDER'] = ('T-Tech Connect', os.environ.get('MAIL_USERNAME', ''))
+app.config['MAIL_DEBUG']         = False
 mail = Mail(app)
 
 GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
@@ -545,6 +547,8 @@ def register():
         conn.commit()
         user_id = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()['id']
 
+    _send_welcome_email(email, full_name, role)
+
     session.clear()
     session['user_id']    = user_id
     session['user_name']  = full_name
@@ -1012,6 +1016,52 @@ def _send_reset_email(to_email, name, reset_url):
         mail.send(msg)
     except Exception as e:
         app.logger.error(f"Password reset email failed: {e}")
+
+
+def _send_welcome_email(to_email, name, role):
+    role_label = 'Tenant' if role == 'student' else role.capitalize()
+    dashboard  = 'https://t-tech-connect.onrender.com/dashboard' if role == 'student' else 'https://t-tech-connect.onrender.com/landlord'
+    try:
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="margin:0;padding:0;background:#f0f4ff;font-family:Inter,system-ui,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+            <div style="background:linear-gradient(135deg,#1d4ed8,#1e3a8a);padding:32px;text-align:center">
+              <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Welcome to T-Tech Connect!</h1>
+              <p style="color:rgba(255,255,255,.8);margin:6px 0 0;font-size:14px">Connecting Tenants with Landlords</p>
+            </div>
+            <div style="padding:36px 32px">
+              <h2 style="color:#111827;font-size:18px;margin:0 0 8px">Hi {name},</h2>
+              <p style="color:#6b7280;line-height:1.6;margin:0 0 16px">
+                Your <strong>{role_label}</strong> account has been created successfully. You're all set to get started on T-Tech Connect.
+              </p>
+              {'<p style="color:#6b7280;line-height:1.6;margin:0 0 24px">Browse available properties, contact landlords directly, and find your perfect home.</p>' if role == 'student' else '<p style="color:#6b7280;line-height:1.6;margin:0 0 24px">Start listing your properties and connect with tenants looking for accommodation.</p>'}
+              <div style="text-align:center;margin:0 0 28px">
+                <a href="{dashboard}"
+                   style="display:inline-block;padding:14px 32px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px">
+                  Go to My Dashboard
+                </a>
+              </div>
+              <p style="color:#9ca3af;font-size:13px;line-height:1.6;margin:0">
+                If you have any questions, reply to this email or use the Contact Support option inside the app.
+              </p>
+            </div>
+            <div style="background:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #f3f4f6">
+              <p style="color:#9ca3af;font-size:12px;margin:0">© 2026 T-Tech Connect · This is an automated message, please do not reply.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+        """
+        msg = Message(
+            subject="Welcome to T-Tech Connect!",
+            recipients=[to_email],
+            html=html_body
+        )
+        mail.send(msg)
+    except Exception as e:
+        app.logger.error(f"Welcome email failed: {e}")
 
 
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
@@ -1689,6 +1739,22 @@ def on_typing(data):
 def _admin_common():
     return dict(user_name=session.get('user_name'), user_role=session.get('user_role'),
                 unread_count=get_unread_count(session['user_id']))
+
+
+@app.route('/admin/test-email')
+@admin_required
+def admin_test_email():
+    to = request.args.get('to') or session.get('user_email')
+    try:
+        msg = Message(
+            subject="T-Tech Connect — Email Test",
+            recipients=[to],
+            html=f"<p>This is a test email from T-Tech Connect. If you received this, email is working correctly.</p><p>Sent to: {to}</p>"
+        )
+        mail.send(msg)
+        return jsonify({'success': True, 'message': f'Test email sent to {to}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @app.route('/admin')
