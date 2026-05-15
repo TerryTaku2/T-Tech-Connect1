@@ -214,7 +214,7 @@ def init_db():
         """)
 
         seeds = [
-            ("Admin User",     "admin@ttech.ac.zw",    "Admin@1234",    "admin"),
+            ("Admin User",     "terrencemuromba6@gmail.com",    "Admin@1234",    "admin"),
             ("John Student",   "student@ttech.ac.zw",  "Student@1234",  "student"),
             ("Grace Landlord", "landlord@ttech.ac.zw", "Landlord@1234", "landlord"),
         ]
